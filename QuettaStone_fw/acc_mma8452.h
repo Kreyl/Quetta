@@ -8,12 +8,12 @@
 #ifndef ACC_MMA_H
 #define	ACC_MMA_H
 
-#include "kl_lib_f2xx.h"
+#include "kl_lib.h"
 #include "ch.h"
 #include "hal.h"
 
-#define ACC_IRQ_GPIO            GPIOB
-#define ACC_IRQ_PIN             5
+#define ACC_IRQ_GPIO            GPIOC
+#define ACC_IRQ_PIN             3
 
 #define ACC_MOTION_TRESHOLD     16      // 1...127. The threshold resolution is 0.063g/LSB.
 

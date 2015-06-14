@@ -251,7 +251,7 @@ void chEvtSignal(Thread *tp, eventmask_t mask) {
 void chEvtSignalI(Thread *tp, eventmask_t mask) {
 
   chDbgCheckClassI();
-  chDbgCheck(tp != NULL, "chEvtSignalI");
+  chDbgCheck(tp != NULL, "chEvtSignalI Null Thd");
 
   tp->p_epending |= mask;
   /* Test on the AND/OR conditions wait states.*/

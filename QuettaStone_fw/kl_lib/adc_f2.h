@@ -8,7 +8,7 @@
 #ifndef KL_ADC_H_
 #define KL_ADC_H_
 
-#include "kl_lib_f2xx.h"
+#include "kl_lib.h"
 #include "clocking.h"
 
 // =============================== Constants ===================================

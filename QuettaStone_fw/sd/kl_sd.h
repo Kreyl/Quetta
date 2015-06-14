@@ -11,7 +11,7 @@
 #include "ff.h"
 #include "ch.h"
 #include "hal.h"
-#include "kl_lib_f2xx.h"
+#include "kl_lib.h"
 
 #define MAX_NAME_LEN    128
 

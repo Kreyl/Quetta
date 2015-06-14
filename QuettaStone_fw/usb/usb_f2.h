@@ -10,7 +10,7 @@
 
 #include "ch.h"
 #include "hal.h"
-#include "kl_lib_f2xx.h"
+#include "kl_lib.h"
 #include "descriptors.h"
 #include "stm32_otg.h"
 

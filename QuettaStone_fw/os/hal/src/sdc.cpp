@@ -36,7 +36,7 @@
 #include "ch.h"
 #include "hal.h"
 
-#include "kl_lib_f2xx.h"
+#include "kl_lib.h"
 
 #if HAL_USE_SDC || defined(__DOXYGEN__)
 

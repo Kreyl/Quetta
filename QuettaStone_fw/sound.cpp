@@ -1,6 +1,6 @@
 #include "sound.h"
 #include <string.h>
-#include "evt_mask.h"
+#include "main.h" // for app
 
 //#if SOUND_ENABLED
 
@@ -50,7 +50,7 @@ void Sound_t::ITask() {
     while(true) {
         eventmask_t EvtMsk = chEvtWaitAny(ALL_EVENTS);
         if(EvtMsk & VS_EVT_DMA_DONE) {
-            ISpi.WaitBsyLo();               // Wait SPI transaction end
+            ISpi.WaitBsyHi2Lo();               // Wait SPI transaction end
             XCS_Hi();                       // }
             XDCS_Hi();                      // } Stop SPI
             if(IDreq.IsHi()) ISendNextData();   // More data allowed, send it now
@@ -69,7 +69,7 @@ void Sound_t::ITask() {
 //        	Uart.Printf("\rComp");
             AddCmd(VS_REG_MODE, 0x0004);    // Soft reset
             if(IFilename != NULL) IPlayNew();
-            else if(IPThd != nullptr) chEvtSignal(IPThd, EVTMASK_PLAY_ENDS);  // Raise event if nothing to play
+            else App.SignalEvt(EVTMSK_PLAY_ENDS); // Raise event if nothing to play
         }
         // Stop request
         else if(EvtMsk & VS_EVT_STOP) {

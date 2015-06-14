@@ -9,18 +9,30 @@
 #include "ch.h"
 #include "hal.h"
 
-#include "kl_lib_f2xx.h"
+#include "kl_lib.h"
 #include "kl_sd.h"
 #include "sound.h"
-#include "cmd_uart.h"
+#include "uart.h"
 #include "ff.h"
 #include "MassStorage.h"
-#include "evt_mask.h"
 #include "main.h"
 #include "acc_mma8452.h"
 
-SndList_t SndList;
+//SndList_t SndList;
+App_t App;
 i2c_t i2c;
+KickList_t KickList;
+
+#if 1 // ============================ Timers ===================================
+// Once-a-second timer
+void TmrSecondCallback(void *p) {
+    chSysLockFromIsr();
+    App.SignalEvtI(EVTMSK_EVERY_SECOND);
+    chVTSetI(&App.TmrSecond, MS2ST(1000), TmrSecondCallback, nullptr);
+    chSysUnlockFromIsr();
+}
+#endif
+
 
 // =============================== Main ========================================
 int main() {
@@ -41,7 +53,9 @@ int main() {
     chSysInit();
 
     // ==== Init Hard & Soft ====
+    App.InitThread();
     Uart.Init(115200);
+
     SD.Init();
 
     // USB related
@@ -50,10 +64,11 @@ int main() {
 
     Sound.Init();
     Sound.SetVolume(210);
-    Sound.RegisterAppThd(chThdSelf());
     Sound.Play("alive.wav");
 
     // Accelerometer
+//    i2c.Init(I2C1, GPIOB, 6, 7, 100000, STM32_DMA1_STREAM7, STM32_DMA1_STREAM1);
+//    Acc.Init();
 
 //    ReadConfig();
     Uart.Printf("\rPortrait   AHB freq=%uMHz", Clk.AHBFreqHz/1000000);
@@ -61,13 +76,35 @@ int main() {
     if(ClkResult) Uart.Printf("Clock failure\r");
 #endif
 
-    // ==== Main cycle ====
-    bool WasExternal = false;
-//    int32_t PreviousPhrase = 0;
-    while(true) {
-        chThdSleepMilliseconds(306);
+    // Timers
+    chVTSet(&App.TmrSecond, MS2ST(1000), TmrSecondCallback, nullptr);
 
-#if 1 // ==== USB connected/disconnected ====
+    // Main cycle
+    App.ITask();
+}
+
+__attribute__ ((__noreturn__))
+void App_t::ITask() {
+    while(true) {
+        uint32_t EvtMsk = chEvtWaitAny(ALL_EVENTS);
+
+#if 1   // ==== Every second ====
+        if(EvtMsk & EVTMSK_EVERY_SECOND) {
+
+        } // if EVTMSK_EVERY_SECOND
+#endif
+
+#if 1   // ==== New kick ====
+        if(EvtMsk & EVTMSK_NEW_KICK) {
+            chSysLock();
+            uint32_t ksq = KickList.Analyze();
+            KickList.PrintfI();
+            chSysUnlock();
+            Uart.Printf("\rksq=%u", ksq);
+        } // if EVTMSK_NEW_KICK
+#endif
+
+#if 0 // ==== USB connected/disconnected ====
         if(WasExternal and !ExternalPwrOn()) {  // Usb disconnected
             WasExternal = false;
             Usb.Shutdown();
@@ -116,8 +153,10 @@ int main() {
     } // while true
 }
 
+
 char SndKey[45]="Sound";
 uint8_t ReadConfig() {
+/*
     int32_t Probability;
     if(SD.iniReadInt32("Sound", "Count", "settings.ini", &SndList.Count) != OK) return FAILURE;
     Uart.Printf("\rCount: %d", SndList.Count);
@@ -143,6 +182,7 @@ uint8_t ReadConfig() {
         SndList.Phrases[i].ProbTop = SndList.ProbSumm;
     }
     for(int i=0; i<SndList.Count; i++) Uart.Printf("\r%u %S Bot=%u Top=%u", i, SndList.Phrases[i].Filename, SndList.Phrases[i].ProbBottom, SndList.Phrases[i].ProbTop);
+  */
     return OK;
 }
 

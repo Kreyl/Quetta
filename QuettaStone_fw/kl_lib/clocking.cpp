@@ -7,7 +7,7 @@
 
 #include "clocking.h"
 #include "stm32_rcc.h"
-#include "kl_lib_f2xx.h"
+#include "kl_lib.h"
 
 Clk_t Clk;
 

@@ -66,6 +66,24 @@ void MassStorage_t::Reset() {
     chSysUnlock();
 }
 
+static inline uint16_t BuildUint16(uint8_t Lo, uint8_t Hi) {
+    uint16_t r = Hi;
+    r <<= 8;
+    r |= Lo;
+    return r;
+}
+
+static inline uint32_t BuildUint32(uint8_t Lo, uint8_t MidLo, uint8_t MidHi, uint8_t Hi) {
+    uint32_t r = Hi;
+    r <<= 8;
+    r |= MidHi;
+    r <<= 8;
+    r |= MidLo;
+    r <<= 8;
+    r |= Lo;
+    return r;
+}
+
 #if 1 // ====================== OUT task =======================================
 __attribute__((__noreturn__))
 void MassStorage_t::UsbOutTask() {

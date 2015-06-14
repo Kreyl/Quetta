@@ -10,8 +10,8 @@
 
 #include "kl_sd.h"
 #include <stdint.h>
-#include "kl_lib_f2xx.h"
-#include "cmd_uart.h"
+#include "kl_lib.h"
+#include "uart.h"
 
 // ==== Defines ====
 #define VS_GPIO         GPIOB
@@ -106,7 +106,6 @@ private:
     int16_t IAttenuation;
     const char* IFilename;
     uint32_t IStartPosition;
-    Thread *IPThd;
     // Pin operations
     inline void Rst_Lo()   { PinClear(VS_GPIO, VS_RST); }
     inline void Rst_Hi()   { PinSet(VS_GPIO, VS_RST); }
@@ -158,7 +157,6 @@ public:
         if(IAttenuation > 0x8F) IAttenuation = 0x8F;
         AddCmd(VS_REG_VOL, ((IAttenuation * 256) + IAttenuation));
     }
-    void RegisterAppThd(Thread *PThd) { IPThd = PThd; }
 
     uint32_t GetPosition() { return IFile.fptr; }
 #if VS_AMPF_EXISTS
@@ -166,7 +164,7 @@ public:
     void AmpfOff() { PinClear(VS_AMPF_GPIO, VS_AMPF_PIN); }
 #endif
     // Inner use
-    IrqPin_t IDreq;
+    PinIrq_t IDreq;
     Thread *PThread;
     void IrqDreqHandler();
     void ITask();

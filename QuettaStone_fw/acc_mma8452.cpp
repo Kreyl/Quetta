@@ -1,6 +1,7 @@
 #include "acc_mma8452.h"
 #include "evt_mask.h"
 #include "main.h"
+#include "uart.h"
 
 Acc_t Acc;
 
@@ -15,7 +16,7 @@ static void AccThread(void *arg) {
 void Acc_t::Task() {
     chThdSleepMilliseconds(108);
     if(PinIsSet(ACC_IRQ_GPIO, ACC_IRQ_PIN)) {  // IRQ occured
-//        Uart.Printf("Irq\r");
+        Uart.Printf("AccIrq\r");
         IClearIrq();
 //        App.SignalEvt(EVTMSK_ACC_IRQ);
     }

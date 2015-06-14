@@ -10,8 +10,8 @@
 #include "sdc_lld.h"
 #include <string.h>
 #include <stdlib.h>
-#include "kl_lib_f2xx.h"
-#include "cmd_uart.h"
+#include "kl_lib.h"
+#include "uart.h"
 
 sd_t SD;
 extern Semaphore semSDRW;
