@@ -1,0 +1,9 @@
+QuettaPortrait_fw/.settings/language.settings.xml
+*.kicad_pcb-bak
+*.bak
+QuettaPortrait_fw/.settings/org.eclipse.cdt.codan.core.prefs
+QuettaPortrait_fw/Debug/
+QuettaStone_fw/.settings/language.settings.xml
+QuettaStone_fw/.settings/org.eclipse.cdt.codan.core.prefs
+QuettaStone_fw/Debug/os/hal/chcore_v7m.d
+QuettaStone_fw/Debug/
