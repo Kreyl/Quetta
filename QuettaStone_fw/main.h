@@ -11,6 +11,9 @@
 #include "KickList.h"
 #include "evt_mask.h"
 
+#define APP_NAME        "SpeakingStone"
+#define APP_VERSION     _TIMENOW_
+
 // External Power Input
 #define PWR_EXTERNAL_GPIO   GPIOA
 #define PWR_EXTERNAL_PIN    9

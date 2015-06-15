@@ -165,6 +165,11 @@ static inline void chVTRestart(VirtualTimer *vtp, systime_t time, vtfunc_t vtfun
     chVTSetI(vtp, time, vtfunc, par);
     chSysUnlock();
 }
+static inline void chVTRestartI(VirtualTimer *vtp, systime_t time, vtfunc_t vtfunc, void *par) {
+    if(chVTIsArmedI(vtp)) chVTResetI(vtp);
+    chVTSetI(vtp, time, vtfunc, par);
+}
+
 static inline void chVTRestart(VirtualTimer *vtp, systime_t time, eventmask_t Evt) {
     chSysLock()
     if(chVTIsArmedI(vtp)) chVTResetI(vtp);

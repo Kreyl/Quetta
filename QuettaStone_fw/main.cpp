@@ -70,7 +70,7 @@ int main() {
     Acc.Init();
 
 //    ReadConfig();
-    Uart.Printf("\rPortrait   AHB freq=%uMHz", Clk.AHBFreqHz/1000000);
+    Uart.Printf("\r%S_%S   AHB freq=%uMHz", APP_NAME, APP_VERSION, Clk.AHBFreqHz/1000000);
     // Report problem with clock if any
     if(ClkResult) Uart.Printf("Clock failure\r");
 
@@ -97,12 +97,12 @@ void App_t::ITask() {
 
 #if 1   // ==== New kick ====
         if(EvtMsk & EVTMSK_NEW_KICK) {
-            Uart.Printf("\rKick");
-            Acc.ClearIrq();
+//            Uart.Printf("\rKick");
             chSysLock();
-//            uint32_t ksq = KickList.Analyze();
-            KickList.PrintfI();
+            uint32_t ksq = 0;
+            uint8_t rslt = KickList.SearchSeq(&ksq);
             chSysUnlock();
+            if(rslt == OK) Sound.Play("phrase01.wav");
 //            Uart.Printf("\rksq=%u", ksq);
         } // if EVTMSK_NEW_KICK
 #endif

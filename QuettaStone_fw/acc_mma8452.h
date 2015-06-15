@@ -16,7 +16,7 @@
 #define ACC_IRQ_GPIO            GPIOC
 #define ACC_IRQ_PIN             3
 
-#define ACC_MOTION_TRESHOLD     16      // 1...127. The threshold resolution is 0.063g/LSB.
+#define ACC_MOTION_TRESHOLD     18      // 1...127. The threshold resolution is 0.063g/LSB.
 
 #define ACC_I2C_ADDR            0x1C
 
@@ -44,7 +44,7 @@ struct Accelerations_t {
 #define ACCELERATIONS_SIZE     sizeof(Accelerations_t)
 #endif
 
-#define ACC_IRQPIN_NEEDED
+//#define ACC_IRQPIN_NEEDED
 
 #ifdef ACC_IRQPIN_NEEDED
 #if ACC_IRQ_PIN == 0
@@ -60,8 +60,6 @@ struct Accelerations_t {
 #endif
 #endif
 
-//#define ACC_THD_NEEDED
-
 extern i2c_t i2c;
 
 class Acc_t {
@@ -70,6 +68,10 @@ private:
         uint8_t RegAddr = AAddr, RegValue = AValue;
         if(i2c.CmdWriteWrite(ACC_I2C_ADDR, &RegAddr, 1, &RegValue, 1) != OK)
             Uart.Printf("\r!Acc WReg failure (%u %u)", AAddr, AValue);
+    }
+    void IClearIrq() { // Dummy read
+        uint8_t RegAddr = ACC_FF_MT_SRC, Dummy;
+        i2c.CmdWriteRead(ACC_I2C_ADDR, &RegAddr, 1, &Dummy, 1);
     }
 public:
 #ifdef ACC_ACCELERATIONS_NEEDED
@@ -81,14 +83,9 @@ public:
     }
 #endif
     void Init();
-    void ClearIrq() { // Dummy read
-        uint8_t RegAddr = ACC_FF_MT_SRC, Dummy;
-        i2c.CmdWriteRead(ACC_I2C_ADDR, &RegAddr, 1, &Dummy, 1);
-    }
-#ifdef ACC_THD_NEEDED
     void Task();
-#endif
 #ifdef ACC_IRQPIN_NEEDED
+    void IIrqHandler();
     PinIrq_t IIrqPin;
 #endif
 };
