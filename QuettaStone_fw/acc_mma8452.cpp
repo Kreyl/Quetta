@@ -5,6 +5,7 @@
 
 Acc_t Acc;
 
+#ifdef ACC_THD_NEEDED
 static WORKING_AREA(waAccThread, 128);
 
 __attribute__ ((__noreturn__))
@@ -17,14 +18,15 @@ void Acc_t::Task() {
     chThdSleepMilliseconds(720);
     if(PinIsSet(ACC_IRQ_GPIO, ACC_IRQ_PIN)) {  // IRQ occured
         Uart.Printf("\rAccIrq");
-        IClearIrq();
-//        App.SignalEvt(EVTMSK_ACC_IRQ);
+        ClearIrq();
+        App.SignalEvt(EVTMSK_ACC_IRQ);
     }
 #ifdef ACC_ACCELERATIONS_NEEDED
     ReadAccelerations();
     Uart.Printf("\rX: %d; Y: %d; Z: %d", Accelerations.xMSB, Accelerations.yMSB, Accelerations.zMSB);
 #endif
 }
+#endif
 
 void Acc_t::Init() {
     // Init INT pin
@@ -45,5 +47,27 @@ void Acc_t::Init() {
     IWriteReg(ACC_REG_CONTROL5, 0b00000100);    // FreeFall/motion IRQ is routed to INT1 pin
     IWriteReg(ACC_REG_CONTROL1, 0b10100001);    // ASleep=10 => 6.75Hz; DR=100 => 50Hz output data rate (ODR); Mode = Active
     // Thread
+#ifdef ACC_THD_NEEDED
     chThdCreateStatic(waAccThread, sizeof(waAccThread), NORMALPRIO, (tfunc_t)AccThread, NULL);
+#endif
+    // ==== IRQ ====
+#ifdef ACC_IRQPIN_NEEDED
+    IIrqPin.Setup(ACC_IRQ_GPIO, ACC_IRQ_PIN, ttRising);
+    IIrqPin.EnableIrq(IRQ_PRIO_LOW);
+#endif
 }
+
+#ifdef ACC_IRQPIN_NEEDED // =================== Interrupt ======================
+extern "C" {
+CH_IRQ_HANDLER(ACC_IRQ_HANDLER) {
+    CH_IRQ_PROLOGUE();
+//    Uart.PrintfI("\rAccIrq");
+    chSysLockFromIsr();
+    Acc.IIrqPin.CleanIrqFlag();
+    KickList.AddI();
+    App.SignalEvtI(EVTMSK_NEW_KICK);
+    chSysUnlockFromIsr();
+    CH_IRQ_EPILOGUE();
+}
+} // extern c
+#endif

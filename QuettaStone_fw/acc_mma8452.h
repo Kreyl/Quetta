@@ -34,7 +34,7 @@
 #define ACC_REG_CONTROL4        0x2D
 #define ACC_REG_CONTROL5        0x2E
 
-#define ACC_ACCELERATIONS_NEEDED
+//#define ACC_ACCELERATIONS_NEEDED
 
 #ifdef ACC_ACCELERATIONS_NEEDED
 struct Accelerations_t {
@@ -44,14 +44,28 @@ struct Accelerations_t {
 #define ACCELERATIONS_SIZE     sizeof(Accelerations_t)
 #endif
 
+#define ACC_IRQPIN_NEEDED
+
+#ifdef ACC_IRQPIN_NEEDED
+#if ACC_IRQ_PIN == 0
+#define ACC_IRQ_HANDLER      EXTI0_IRQHandler
+#elif ACC_IRQ_PIN == 1
+#define ACC_IRQ_HANDLER     EXTI1_IRQHandler
+#elif ACC_IRQ_PIN == 2
+#define ACC_IRQ_HANDLER     EXTI2_IRQHandler
+#elif ACC_IRQ_PIN == 3
+#define ACC_IRQ_HANDLER     EXTI3_IRQHandler
+#elif ACC_IRQ_PIN == 4
+#define ACC_IRQ_HANDLER     EXTI4_IRQHandler
+#endif
+#endif
+
+//#define ACC_THD_NEEDED
+
 extern i2c_t i2c;
 
 class Acc_t {
 private:
-    void IClearIrq() { // Dummy read
-        uint8_t RegAddr = ACC_FF_MT_SRC, Dummy;
-        i2c.CmdWriteRead(ACC_I2C_ADDR, &RegAddr, 1, &Dummy, 1);
-    }
     void IWriteReg(uint8_t AAddr, uint8_t AValue) {
         uint8_t RegAddr = AAddr, RegValue = AValue;
         if(i2c.CmdWriteWrite(ACC_I2C_ADDR, &RegAddr, 1, &RegValue, 1) != OK)
@@ -67,7 +81,16 @@ public:
     }
 #endif
     void Init();
+    void ClearIrq() { // Dummy read
+        uint8_t RegAddr = ACC_FF_MT_SRC, Dummy;
+        i2c.CmdWriteRead(ACC_I2C_ADDR, &RegAddr, 1, &Dummy, 1);
+    }
+#ifdef ACC_THD_NEEDED
     void Task();
+#endif
+#ifdef ACC_IRQPIN_NEEDED
+    PinIrq_t IIrqPin;
+#endif
 };
 
 extern Acc_t Acc;

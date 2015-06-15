@@ -36,7 +36,6 @@ void TmrSecondCallback(void *p) {
 
 // =============================== Main ========================================
 int main() {
-#if 1 // ==== Init ====
     // ==== Setup clock ====
     Clk.UpdateFreqValues();
     uint8_t ClkResult = FAILURE;
@@ -69,13 +68,11 @@ int main() {
     // Accelerometer
     i2c.Init(I2C1, GPIOB, 6, 7, 100000, STM32_DMA1_STREAM7, STM32_DMA1_STREAM0);
     Acc.Init();
-//    i2c.BusScan();
 
 //    ReadConfig();
     Uart.Printf("\rPortrait   AHB freq=%uMHz", Clk.AHBFreqHz/1000000);
     // Report problem with clock if any
     if(ClkResult) Uart.Printf("Clock failure\r");
-#endif
 
     // Timers
     chVTSet(&App.TmrSecond, MS2ST(1000), TmrSecondCallback, nullptr);
@@ -91,17 +88,22 @@ void App_t::ITask() {
 
 #if 1   // ==== Every second ====
         if(EvtMsk & EVTMSK_EVERY_SECOND) {
+//            Acc.IIrqPin.GenerateIrq();
+//            KickList.AddI();
+//            KickList.PrintfI();
 
         } // if EVTMSK_EVERY_SECOND
 #endif
 
 #if 1   // ==== New kick ====
         if(EvtMsk & EVTMSK_NEW_KICK) {
+            Uart.Printf("\rKick");
+            Acc.ClearIrq();
             chSysLock();
-            uint32_t ksq = KickList.Analyze();
+//            uint32_t ksq = KickList.Analyze();
             KickList.PrintfI();
             chSysUnlock();
-            Uart.Printf("\rksq=%u", ksq);
+//            Uart.Printf("\rksq=%u", ksq);
         } // if EVTMSK_NEW_KICK
 #endif
 

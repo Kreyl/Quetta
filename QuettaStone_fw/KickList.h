@@ -27,22 +27,25 @@ const uint32_t ksq[KICK_SEQ_CNT][KICQ_SEQ_SZ] = {
         {108, 207, 360, KICK_SEQ_END},
 };
 
-#define KICK_BUF_SZ         KICQ_SEQ_SZ
+#define KICK_BUF_SZ         9
 class KickList_t {
 private:
     uint32_t Buf[KICK_BUF_SZ];
     void Get();
 public:
     void AddI() {
-        for(uint32_t i=(KICK_BUF_SZ-1); i>0; i++) Buf[i] = Buf[i-1];    // Shift buffer
+        for(uint32_t i=(KICK_BUF_SZ-1); i>0; i--) Buf[i] = Buf[i-1];    // Shift buffer
         Buf[0] = chTimeNow();
     }
     uint32_t Analyze() {    // Zero means nothing
         return 0;
     }
-    void PrintfI() { Uart.PrintfI("\rKickList %A", Buf, KICK_BUF_SZ, ' '); }
+    void PrintfI() {
+        Uart.PrintfI("\rKickList");
+        for(uint32_t i=0; i<KICK_BUF_SZ; i++) Uart.PrintfI(" %u", Buf[i]);
+    }
 };
 
-
+extern KickList_t KickList;
 
 #endif /* KICKLIST_H_ */
