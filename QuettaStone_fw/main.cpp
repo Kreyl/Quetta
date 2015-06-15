@@ -67,8 +67,9 @@ int main() {
     Sound.Play("alive.wav");
 
     // Accelerometer
-//    i2c.Init(I2C1, GPIOB, 6, 7, 100000, STM32_DMA1_STREAM7, STM32_DMA1_STREAM1);
-//    Acc.Init();
+    i2c.Init(I2C1, GPIOB, 6, 7, 100000, STM32_DMA1_STREAM7, STM32_DMA1_STREAM0);
+    Acc.Init();
+//    i2c.BusScan();
 
 //    ReadConfig();
     Uart.Printf("\rPortrait   AHB freq=%uMHz", Clk.AHBFreqHz/1000000);

@@ -652,7 +652,9 @@ public:
 
 class i2c_t {
 private:
+#ifdef STM32F2XX
     uint16_t DmaChnl;
+#endif
     I2C_TypeDef *ii2c;
     GPIO_TypeDef *IPGpio;
     uint16_t ISclPin, ISdaPin;
@@ -663,7 +665,7 @@ private:
     void AckDisable()    { ii2c->CR1 &= ~I2C_CR1_ACK; }
     bool RxIsNotEmpty()  { return (ii2c->SR1 & I2C_SR1_RXNE); }
     void ClearAddrFlag() { (void)ii2c->SR1; (void)ii2c->SR2; }
-    void DmaLastTransferSet() { ii2c->CR2 |= I2C_CR2_LAST; }
+    void SignalLastDmaTransfer() { ii2c->CR2 |= I2C_CR2_LAST; }
     // Address and data
     void SendAddrWithWrite(uint8_t Addr) { ii2c->DR = (uint8_t)(Addr<<1); }
     void SendAddrWithRead (uint8_t Addr) { ii2c->DR = ((uint8_t)(Addr<<1)) | 0x01; }
@@ -687,6 +689,7 @@ public:
     void Standby();
     void Resume();
     void Reset();
+    void BusScan();
     uint8_t CmdWriteRead(uint8_t Addr, uint8_t *WPtr, uint8_t WLength, uint8_t *RPtr, uint8_t RLength);
     uint8_t CmdWriteWrite(uint8_t Addr, uint8_t *WPtr1, uint8_t WLength1, uint8_t *WPtr2, uint8_t WLength2);
 };

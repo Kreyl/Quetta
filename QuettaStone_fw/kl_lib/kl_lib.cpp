@@ -108,13 +108,25 @@ void chDbgPanic(const char *msg1) {
 }
 #endif
 
-#if I2C_KL // ============================= I2C =====================================
+#if defined STM32F2XX // ======================= Random ========================
+uint32_t Random(uint32_t TopValue) {
+    rccEnableAHB2(RCC_AHB2ENR_RNGEN, FALSE);    // Enable clock
+    RNG->CR |= RNG_CR_RNGEN;                    // Enable generator
+    while(!(RNG->SR & RNG_SR_DRDY));            // Wait until ready
+    uint32_t Rnd = RNG->DR;
+    Rnd = Rnd % (TopValue + 1);
+    rccDisableAHB2(RCC_AHB2ENR_RNGEN, FALSE);   // Stop clock
+    return Rnd;
+}
+#endif
+
+#if I2C_KL // ============================= I2C ================================
 void i2cDmaIrqHandler(void *p, uint32_t flags) {
     chSysLockFromIsr();
     //Uart.Printf("===T===");
     Thread *PThd = reinterpret_cast<i2c_t*>(p)->PRequestingThread;
-    if (PThd != NULL) {
-        reinterpret_cast<i2c_t*>(p)->PRequestingThread = NULL;
+    if (PThd != nullptr) {
+        reinterpret_cast<i2c_t*>(p)->PRequestingThread = nullptr;
         chSchReadyI(PThd);
     }
     chSysUnlockFromIsr();
@@ -139,6 +151,12 @@ void i2c_t::Init(
 
     // ==== DMA ====
     // Here only unchanged parameters of the DMA are configured.
+#ifdef STM32F2XX
+    if      (ii2c == I2C1) DmaChnl = 1;
+    else if (ii2c == I2C2) DmaChnl = 7;
+    else                   DmaChnl = 3;   // I2C3
+#endif
+
     // Setup Dma TX
     PDmaTx = APDmaTx;
     dmaStreamAllocate(PDmaTx, IRQ_PRIO_MEDIUM, i2cDmaIrqHandler, this);
@@ -150,8 +168,9 @@ void i2c_t::Init(
 }
 
 void i2c_t::Standby() {
-    if(ii2c == I2C1) { rccResetI2C1(); rccDisableI2C1(FALSE); }
-    else             { rccResetI2C2(); rccDisableI2C2(FALSE); }
+    if      (ii2c == I2C1) { rccResetI2C1(); rccDisableI2C1(FALSE); }
+    else if (ii2c == I2C2) { rccResetI2C2(); rccDisableI2C2(FALSE); }
+    else if (ii2c == I2C3) { rccResetI2C3(); rccDisableI2C3(FALSE); }
     // Disable GPIOs
     PinSetupAnalog(IPGpio, ISclPin);
     PinSetupAnalog(IPGpio, ISdaPin);
@@ -163,14 +182,15 @@ void i2c_t::Resume() {
     PinSetupAlterFunc(IPGpio, ISclPin, omOpenDrain, pudNone, AF4);
     PinSetupAlterFunc(IPGpio, ISdaPin, omOpenDrain, pudNone, AF4);
     // ==== Clock and reset ====
-    if(ii2c == I2C1) { rccEnableI2C1(FALSE); rccResetI2C1(); }
-    else             { rccEnableI2C2(FALSE); rccResetI2C2(); }
+    if      (ii2c == I2C1) { rccEnableI2C1(FALSE); rccResetI2C1(); }
+    else if (ii2c == I2C2) { rccEnableI2C2(FALSE); rccResetI2C2(); }
+    else if (ii2c == I2C3) { rccEnableI2C3(FALSE); rccResetI2C3(); }
     // Minimum clock is 2 MHz
     uint32_t ClkMhz = Clk.APB1FreqHz / 1000000;
     uint16_t tmpreg = ii2c->CR2;
     tmpreg &= (uint16_t)~I2C_CR2_FREQ;
     if(ClkMhz < 2)  ClkMhz = 2;
-    if(ClkMhz > 32) ClkMhz = 32;
+    if(ClkMhz > 30) ClkMhz = 30;
     tmpreg |= ClkMhz;
     ii2c->CR2 = tmpreg;
     ii2c->CR1 &= (uint16_t)~I2C_CR1_PE; // Disable i2c to setup TRise & CCR
@@ -232,7 +252,7 @@ uint8_t i2c_t::CmdWriteRead(uint8_t Addr,
         dmaStreamSetMemory0(PDmaRx, RPtr);
         dmaStreamSetMode   (PDmaRx, I2C_DMARX_MODE);
         dmaStreamSetTransactionSize(PDmaRx, RLength);
-        DmaLastTransferSet(); // Inform DMA that this is last transfer => do not ACK last byte
+        SignalLastDmaTransfer(); // Inform DMA that this is last transfer => do not ACK last byte
         chSysLock();
         PRequestingThread = chThdSelf();
         dmaStreamEnable(PDmaRx);
@@ -289,10 +309,37 @@ uint8_t i2c_t::CmdWriteWrite(uint8_t Addr,
     return OK;
 }
 
+void i2c_t::BusScan() {
+    Uart.Printf("\r     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f");
+    uint8_t AddrHi, Addr;
+    for(AddrHi = 0; AddrHi < 0x80; AddrHi += 0x10) {
+        Uart.Printf("\r%02X: ", AddrHi);
+        for(uint8_t n=0; n<0x10; n++) {
+            Addr = AddrHi + n;
+            if(Addr <= 0x01 or Addr > 0x77) Uart.Printf("   ");
+            else {
+                // Try to get response from addr
+                if(IBusyWait() != OK) return;
+                // Clear flags
+                ii2c->SR1 = 0;
+                while(RxIsNotEmpty()) (void)ii2c->DR;   // Read DR until it empty
+                ClearAddrFlag();
+                // Start transmission
+                SendStart();
+                if(WaitEv5() != OK) continue;
+                SendAddrWithWrite(Addr);
+                if(WaitEv6() == OK) Uart.Printf("%02X ", Addr);
+                else Uart.Printf("__ ");
+                SendStop();
+            }
+        } // for n
+    } // for AddrHi
+}
+
 // ==== Flag operations ====
 // Busy flag
 uint8_t i2c_t::IBusyWait() {
-    uint8_t RetryCnt = 4;
+    uint8_t RetryCnt = 45;
     while(RetryCnt--) {
         if(!(ii2c->SR2 & I2C_SR2_BUSY)) return OK;
         chThdSleepMilliseconds(1);
@@ -314,7 +361,7 @@ uint8_t i2c_t::WaitEv5() {
 }
 
 uint8_t i2c_t::WaitEv6() {
-    uint32_t RetryCnt = 45;
+    uint32_t RetryCnt = 450;
     uint16_t Flag1;
     do {
         Flag1 = ii2c->SR1;
@@ -324,7 +371,7 @@ uint8_t i2c_t::WaitEv6() {
 }
 
 uint8_t i2c_t::WaitEv8() {
-    uint32_t RetryCnt = 45;
+    uint32_t RetryCnt = 450;
     while(RetryCnt--)
         if(ii2c->SR1 & I2C_SR1_TXE) return OK;
     Error = true;

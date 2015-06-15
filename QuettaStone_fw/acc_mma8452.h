@@ -11,6 +11,7 @@
 #include "kl_lib.h"
 #include "ch.h"
 #include "hal.h"
+#include "uart.h"
 
 #define ACC_IRQ_GPIO            GPIOC
 #define ACC_IRQ_PIN             3
@@ -33,7 +34,7 @@
 #define ACC_REG_CONTROL4        0x2D
 #define ACC_REG_CONTROL5        0x2E
 
-//#define ACC_ACCELERATIONS_NEEDED
+#define ACC_ACCELERATIONS_NEEDED
 
 #ifdef ACC_ACCELERATIONS_NEEDED
 struct Accelerations_t {
@@ -53,7 +54,8 @@ private:
     }
     void IWriteReg(uint8_t AAddr, uint8_t AValue) {
         uint8_t RegAddr = AAddr, RegValue = AValue;
-        i2c.CmdWriteWrite(ACC_I2C_ADDR, &RegAddr, 1, &RegValue, 1);
+        if(i2c.CmdWriteWrite(ACC_I2C_ADDR, &RegAddr, 1, &RegValue, 1) != OK)
+            Uart.Printf("\r!Acc WReg failure (%u %u)", AAddr, AValue);
     }
 public:
 #ifdef ACC_ACCELERATIONS_NEEDED
