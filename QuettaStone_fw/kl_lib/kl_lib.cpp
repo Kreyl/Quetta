@@ -339,7 +339,7 @@ void i2c_t::BusScan() {
 // ==== Flag operations ====
 // Busy flag
 uint8_t i2c_t::IBusyWait() {
-    uint8_t RetryCnt = 45;
+    uint8_t RetryCnt = 4;
     while(RetryCnt--) {
         if(!(ii2c->SR2 & I2C_SR2_BUSY)) return OK;
         chThdSleepMilliseconds(1);
@@ -371,7 +371,7 @@ uint8_t i2c_t::WaitEv6() {
 }
 
 uint8_t i2c_t::WaitEv8() {
-    uint32_t RetryCnt = 450;
+    uint32_t RetryCnt = 45;
     while(RetryCnt--)
         if(ii2c->SR1 & I2C_SR1_TXE) return OK;
     Error = true;
