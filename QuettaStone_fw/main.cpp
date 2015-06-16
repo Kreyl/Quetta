@@ -64,6 +64,7 @@ int main() {
     Sound.Init();
     Sound.SetVolume(210);
     Sound.Play("alive.wav");
+//    Sound.SetVolume(255);
 
     // Accelerometer
     i2c.Init(I2C1, GPIOB, 6, 7, 100000, STM32_DMA1_STREAM7, STM32_DMA1_STREAM0);
@@ -99,15 +100,22 @@ void App_t::ITask() {
         if(EvtMsk & EVTMSK_NEW_KICK) {
 //            Uart.Printf("\rKick");
             chSysLock();
-            uint32_t ksq = 0;
-            uint8_t rslt = KickList.SearchSeq(&ksq);
+            int ksqN = 0;
+            uint8_t rslt = KickList.SearchSeq(&ksqN);
             chSysUnlock();
-            if(rslt == OK) Sound.Play("phrase01.wav");
+            if(rslt == OK) {
+                switch(ksqN) {
+                    case 0: Sound.Play("teiwaz.wav"); break;
+                    case 1: Sound.Play("algiz.wav"); break;
+                    case 2: Sound.Play("ansus.wav"); break;
+                    default: break;
+                }
+            } // if OK
 //            Uart.Printf("\rksq=%u", ksq);
         } // if EVTMSK_NEW_KICK
 #endif
 
-#if 0 // ==== USB connected/disconnected ====
+#if 1 // ==== USB connected/disconnected ====
         if(WasExternal and !ExternalPwrOn()) {  // Usb disconnected
             WasExternal = false;
             Usb.Shutdown();

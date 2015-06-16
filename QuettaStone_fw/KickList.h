@@ -15,32 +15,57 @@
 _____| |_____| |__| |_______________| |...
       S   t0    t1 P    t_between    S
 */
-#define KICK_MIN_INTERVAL   153 // Shorter intervals ignored
+#define KICK_MIN_INTERVAL   153     // Shorter intervals ignored
+#define KICK_DEADTIME_MS    3600    // Delay after good sequence
 
-#define KICK_CLEAN_DELAY_MS 2700
-
-#define KICK_SEQ_CNT        3
-#define KICQ_SEQ_SZ         7
-#define KICK_SEQ_END        0
-
-#define KICK_TOLERANCE_MS   153  // Plus-minus
-const uint32_t ksq[KICK_SEQ_CNT][KICQ_SEQ_SZ] = {
-        {950, 450, 450, KICK_SEQ_END},
-        {54, 54, 54, 108, KICK_SEQ_END},
-        {108, 207, 360, KICK_SEQ_END},
-};
+#define KICK_TOLERANCE_MS   252     // Plus-minus
+#define KICK_LONG_MS        999
+#define KICK_SHORT_MS       405
 
 #define KICK_BUF_SZ         9
+
+struct ksq_t {
+    const uint32_t *PSq;
+    uint32_t Len;
+};
+// ==== Table of sequences ====
+// Beware! No check is made if buf size is greater than seq length
+#define FERRUM
+//#define AURUM
+//#define ARGENTUM
+
+#ifdef FERRUM
+const uint32_t ksqA[] = {KICK_LONG_MS, KICK_SHORT_MS, KICK_SHORT_MS};
+const uint32_t ksqB[] = {KICK_SHORT_MS, KICK_SHORT_MS, KICK_SHORT_MS, KICK_LONG_MS, KICK_LONG_MS};
+const uint32_t ksqC[] = {KICK_SHORT_MS, KICK_LONG_MS, KICK_LONG_MS, KICK_LONG_MS, KICK_SHORT_MS, KICK_SHORT_MS};
+#elif defined AURUM
+const uint32_t ksqA[] = {KICK_SHORT_MS, KICK_LONG_MS, KICK_SHORT_MS};
+const uint32_t ksqB[] = {KICK_SHORT_MS, KICK_SHORT_MS, KICK_SHORT_MS, KICK_LONG_MS, KICK_SHORT_MS};
+const uint32_t ksqC[] = {KICK_SHORT_MS, KICK_LONG_MS, KICK_LONG_MS, KICK_SHORT_MS, KICK_LONG_MS, KICK_SHORT_MS};
+#elif defined ARGENTUM
+const uint32_t ksqA[] = {KICK_LONG_MS, KICK_LONG_MS, KICK_SHORT_MS};
+const uint32_t ksqB[] = {KICK_SHORT_MS, KICK_SHORT_MS, KICK_SHORT_MS, KICK_SHORT_MS, KICK_SHORT_MS};
+const uint32_t ksqC[] = {KICK_SHORT_MS, KICK_LONG_MS, KICK_LONG_MS, KICK_SHORT_MS, KICK_SHORT_MS, KICK_LONG_MS};
+#endif
+
+const ksq_t ksqTable[] = {
+        {ksqA, countof(ksqA)},
+        {ksqB, countof(ksqB)},
+        {ksqC, countof(ksqC)},
+};
+#define KSQ_CNT     countof(ksqTable)
+
+
 class KickList_t {
 private:
-    uint32_t Cnt = 0;
     uint32_t Buf[KICK_BUF_SZ];
-    uint32_t Intl[KICK_BUF_SZ];
-    VirtualTimer TmrClean;
+//    uint32_t Intl[KICK_BUF_SZ];
+    VirtualTimer TmrDeadtime;
+    uint32_t PrevTime = 0;
 public:
+    bool IAppendEnabled = true;
     void AddI();
-    void CleanI();
-    uint8_t SearchSeq(uint32_t *PIndx);
+    uint8_t SearchSeq(int *PIndx);
     void PrintfI() {
         Uart.PrintfI("\rKickList");
         for(uint32_t i=0; i<KICK_BUF_SZ; i++) Uart.PrintfI(" %u", Buf[i]);

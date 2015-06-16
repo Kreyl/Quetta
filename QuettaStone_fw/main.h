@@ -21,6 +21,7 @@ static inline bool ExternalPwrOn() { return  PinIsSet(PWR_EXTERNAL_GPIO, PWR_EXT
 
 class App_t {
 private:
+    bool WasExternal = false;
     Thread *PThread;
     uint8_t ReadConfig();
 public:
