@@ -55,7 +55,7 @@
 #define UART_DMA_RX         STM32_DMA1_STREAM5
 #endif
 
-#define UART_TXBUF_SZ       207
+#define UART_TXBUF_SZ       1024
 
 #define UART_DMA_TX_MODE    STM32_DMA_CR_CHSEL(UART_DMA_CHNL) | \
                             DMA_PRIORITY_LOW | \

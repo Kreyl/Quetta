@@ -7,6 +7,7 @@
 
 #include "KickList.h"
 #include "main.h"
+#include "math.h"
 
 // Clean timer
 void TmrDeadtimeCallback(void *p) {
@@ -34,38 +35,50 @@ void KickList_t::AddI() {
     }
 }
 
-
 uint8_t KickList_t::SearchSeq(int *PIndx) {    // Zero means nothing
     // Print intervals
     Uart.PrintfI("\rBuf");
-    for(uint32_t i=0; i<KICK_BUF_SZ; i++) {
-//        if(Buf[i] == 0) break;
-        Uart.PrintfI(" %u", Buf[i]);
-    }
+    for(uint32_t i=0; i<KICK_BUF_SZ; i++) Uart.PrintfI(" %d", Buf[i]);
     // Iterate sequences
     bool IsLike;
     int n = KSQ_CNT-1;  // Search complex seq first
     while(n >= 0) {
         uint32_t Len = ksqTable[n].Len;
         if(Len == 0) continue;
-        // Compare sequences
-        IsLike = false;
-        uint32_t *pBuft = Buf;                           // First item of buffer
-        const uint32_t *pSeqt = &ksqTable[n].PSq[Len-1]; // Last item of sequence
+
+        // Normalize input
+        bool TooLong = false;
+        int32_t Norm[KICK_BUF_SZ];
+        int32_t min=0x7FFFFFFF, max=0;
         for(uint32_t i=0; i<Len; i++) {
-            Uart.PrintfI("\r %u: %u %u", n, *pBuft, *pSeqt);
-            if(IS_LIKE(*pBuft, *pSeqt, KICK_TOLERANCE_MS)) {
-                IsLike = true;
-                pBuft++;
-                pSeqt--;
-            }
-            else {
-                IsLike = false;
-                n--;
+            if(Buf[i] > KICK_TOO_LONG_MS) {
+                TooLong = true;
                 break;
             }
+            if(Buf[i] > max) max = Buf[i];
+            if(Buf[i] < min) min = Buf[i];
         }
+        if(TooLong) {
+            n--;
+            continue;
+        }
+        int32_t mid = (max+min)/2;
+        for(uint32_t i=0; i<Len; i++) {
+            if(Buf[i] >= mid) Norm[i] = KICK_LONG_MS;
+            else Norm[i] = KICK_SHORT_MS;
+        }
+        Uart.PrintfI("\rNorm %u: ", n);
+        for(uint32_t i=0; i<Len; i++) Uart.PrintfI(" %d", Norm[i]);
+
+        // Reverse sequence
+        int32_t RevSeq[KICK_BUF_SZ];
+        const int32_t *p = &ksqTable[n].PSq[Len-1];
+        for(uint32_t i=0; i<Len; i++) RevSeq[i] = *p--;
+
+        // Compare sequences
+        IsLike = IsSimilar(Norm, RevSeq, Len, KICK_TOLERANCE_MS);
         if(IsLike) break;   // Sequence found
+        else n--;
     }
 
     if(IsLike) {
@@ -77,3 +90,17 @@ uint8_t KickList_t::SearchSeq(int *PIndx) {    // Zero means nothing
     }
     else return FAILURE;
 }
+
+bool KickList_t::IsSimilar(int32_t *x, int32_t *y, uint32_t Len, int32_t Radius) {
+    double dist = 0;
+    double diff;
+    for(uint32_t i = 0; i < Len; i++) {
+        diff = x[i] - y[i];
+        dist += diff * diff;
+        Uart.PrintfI("\r  x=%d, y=%d, Dist=%d", x[i], y[i], (int32_t)dist);
+    }
+    dist = sqrt(dist);
+    Uart.PrintfI("\rDist=%d", (int32_t)dist);
+    return (dist < Radius);
+}
+

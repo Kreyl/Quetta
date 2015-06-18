@@ -18,14 +18,15 @@ _____| |_____| |__| |_______________| |...
 #define KICK_MIN_INTERVAL   153     // Shorter intervals ignored
 #define KICK_DEADTIME_MS    3600    // Delay after good sequence
 
-#define KICK_TOLERANCE_MS   252     // Plus-minus
+#define KICK_TOLERANCE_MS   360     // Radius
 #define KICK_LONG_MS        999
 #define KICK_SHORT_MS       405
+#define KICK_TOO_LONG_MS    2007
 
 #define KICK_BUF_SZ         9
 
 struct ksq_t {
-    const uint32_t *PSq;
+    const int32_t *PSq;
     uint32_t Len;
 };
 // ==== Table of sequences ====
@@ -35,17 +36,17 @@ struct ksq_t {
 //#define ARGENTUM
 
 #ifdef FERRUM
-const uint32_t ksqA[] = {KICK_LONG_MS, KICK_SHORT_MS, KICK_SHORT_MS};
-const uint32_t ksqB[] = {KICK_SHORT_MS, KICK_SHORT_MS, KICK_SHORT_MS, KICK_LONG_MS, KICK_LONG_MS};
-const uint32_t ksqC[] = {KICK_SHORT_MS, KICK_LONG_MS, KICK_LONG_MS, KICK_LONG_MS, KICK_SHORT_MS, KICK_SHORT_MS};
+const int32_t ksqA[] = {KICK_LONG_MS, KICK_SHORT_MS, KICK_SHORT_MS};
+const int32_t ksqB[] = {KICK_SHORT_MS, KICK_SHORT_MS, KICK_SHORT_MS, KICK_LONG_MS, KICK_LONG_MS};
+const int32_t ksqC[] = {KICK_SHORT_MS, KICK_LONG_MS, KICK_SHORT_MS, KICK_LONG_MS, KICK_SHORT_MS};
 #elif defined AURUM
-const uint32_t ksqA[] = {KICK_SHORT_MS, KICK_LONG_MS, KICK_SHORT_MS};
-const uint32_t ksqB[] = {KICK_SHORT_MS, KICK_SHORT_MS, KICK_SHORT_MS, KICK_LONG_MS, KICK_SHORT_MS};
-const uint32_t ksqC[] = {KICK_SHORT_MS, KICK_LONG_MS, KICK_LONG_MS, KICK_SHORT_MS, KICK_LONG_MS, KICK_SHORT_MS};
+const int32_t ksqA[] = {KICK_SHORT_MS, KICK_LONG_MS, KICK_SHORT_MS};
+const int32_t ksqB[] = {KICK_SHORT_MS, KICK_SHORT_MS, KICK_SHORT_MS, KICK_LONG_MS, KICK_SHORT_MS};
+const int32_t ksqC[] = {KICK_SHORT_MS, KICK_LONG_MS, KICK_LONG_MS, KICK_LONG_MS, KICK_SHORT_MS, KICK_SHORT_MS};
 #elif defined ARGENTUM
-const uint32_t ksqA[] = {KICK_LONG_MS, KICK_LONG_MS, KICK_SHORT_MS};
-const uint32_t ksqB[] = {KICK_SHORT_MS, KICK_SHORT_MS, KICK_SHORT_MS, KICK_SHORT_MS, KICK_SHORT_MS};
-const uint32_t ksqC[] = {KICK_SHORT_MS, KICK_LONG_MS, KICK_LONG_MS, KICK_SHORT_MS, KICK_SHORT_MS, KICK_LONG_MS};
+const int32_t ksqA[] = {KICK_LONG_MS, KICK_LONG_MS, KICK_SHORT_MS};
+const int32_t ksqB[] = {KICK_SHORT_MS, KICK_SHORT_MS, KICK_SHORT_MS, KICK_SHORT_MS, KICK_SHORT_MS};
+const int32_t ksqC[] = {KICK_SHORT_MS, KICK_LONG_MS, KICK_LONG_MS, KICK_SHORT_MS, KICK_SHORT_MS, KICK_LONG_MS};
 #endif
 
 const ksq_t ksqTable[] = {
@@ -58,10 +59,11 @@ const ksq_t ksqTable[] = {
 
 class KickList_t {
 private:
-    uint32_t Buf[KICK_BUF_SZ];
+    int32_t Buf[KICK_BUF_SZ];
 //    uint32_t Intl[KICK_BUF_SZ];
     VirtualTimer TmrDeadtime;
     uint32_t PrevTime = 0;
+    bool IsSimilar(int32_t *x, int32_t *y, uint32_t Len, int32_t Radius);
 public:
     bool IAppendEnabled = true;
     void AddI();
