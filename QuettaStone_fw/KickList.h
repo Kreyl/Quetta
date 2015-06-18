@@ -30,9 +30,9 @@ struct ksq_t {
 };
 // ==== Table of sequences ====
 // Beware! No check is made if buf size is greater than seq length
-//#define FERRUM
+#define FERRUM
 //#define AURUM
-#define ARGENTUM
+//#define ARGENTUM
 
 #ifdef FERRUM
 const uint32_t ksqA[] = {LONG, SHRT, SHRT};
