@@ -5,28 +5,37 @@
 
 Acc_t Acc;
 
-//static WORKING_AREA(waAccThread, 128);
-//
-//__attribute__ ((__noreturn__))
-//static void AccThread(void *arg) {
-//    chRegSetThreadName("Acc");
-//    while(true) Acc.Task();
-//}
+static WORKING_AREA(waAccThread, 128);
 
-//void Acc_t::Task() {
-//    chThdSleepMilliseconds(9);
-////    if(PinIsSet(ACC_IRQ_GPIO, ACC_IRQ_PIN)) {  // IRQ occured
+__attribute__ ((__noreturn__))
+static void AccThread(void *arg) {
+    chRegSetThreadName("Acc");
+    while(true) Acc.Task();
+}
+
+void Acc_t::Task() {
+    chThdSleepMilliseconds(18);
+//    if(PinIsSet(ACC_IRQ_GPIO, ACC_IRQ_PIN)) {  // IRQ occured
 //        chSysLock();
-////        KickList.AddI();
+//        KickList.AddI();
 //        chSysUnlock();
-////        Uart.Printf("\rAccIrqThd");
-////        IClearIrq();
-////    }
-//#ifdef ACC_ACCELERATIONS_NEEDED
-//    ReadAccelerations();
-//    Uart.Printf("\rX: %d; Y: %d; Z: %d", Accelerations.xMSB, Accelerations.yMSB, Accelerations.zMSB);
-//#endif
-//}
+//        Uart.Printf("\rAccIrqThd");
+//        IClearIrq();
+//    }
+#ifdef ACC_ACCELERATIONS_NEEDED
+    ReadAccelerations();
+    if(
+            Accelerations.xMSB > ACC_KICK_THRESHOLD or Accelerations.xMSB < -ACC_KICK_THRESHOLD or
+            Accelerations.yMSB > ACC_KICK_THRESHOLD or Accelerations.yMSB < -ACC_KICK_THRESHOLD or
+            Accelerations.zMSB > ACC_KICK_THRESHOLD or Accelerations.zMSB < -ACC_KICK_THRESHOLD
+    ) {
+//        Uart.Printf("\rX: %d; Y: %d; Z: %d", Accelerations.xMSB, Accelerations.yMSB, Accelerations.zMSB);
+        chSysLock();
+        KickList.AddI();
+        chSysUnlock();
+    }
+#endif
+}
 
 void Acc_t::Init() {
     // Init INT pin
@@ -49,7 +58,7 @@ void Acc_t::Init() {
 //    IWriteReg(ACC_REG_CONTROL1, 0b10100001);    // ASleep=10 => 6.25Hz; DR=100 => 50Hz output data rate (ODR); Mode = Active
     IWriteReg(ACC_REG_CONTROL1, 0b00100001);    // ASleep=00 => 50Hz; DR=100 => 50Hz output data rate (ODR); Mode = Active
     // Thread
-//    chThdCreateStatic(waAccThread, sizeof(waAccThread), NORMALPRIO, (tfunc_t)AccThread, NULL);
+    chThdCreateStatic(waAccThread, sizeof(waAccThread), NORMALPRIO, (tfunc_t)AccThread, NULL);
     // ==== IRQ ====
 #ifdef ACC_IRQPIN_NEEDED
     IIrqPin.Setup(ACC_IRQ_GPIO, ACC_IRQ_PIN, ttRising);

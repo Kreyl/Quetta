@@ -44,7 +44,7 @@ const uint32_t ksqB[] = {SHRT, LONG, LONG, SHRT, LONG};
 const uint32_t ksqC[] = {SHRT, LONG, LONG, LONG, SHRT, SHRT};
 #elif defined ARGENTUM
 const uint32_t ksqA[] = {LONG, LONG, SHRT};
-const uint32_t ksqB[] = {SHRT, SHRT, LONG, SHRT, SHRT};
+const uint32_t ksqB[] = {SHRT, SHRT, LONG, SHRT, LONG};
 const uint32_t ksqC[] = {SHRT, LONG, SHRT, LONG, SHRT, LONG};
 #endif
 

@@ -34,7 +34,7 @@
 #define ACC_REG_CONTROL4        0x2D
 #define ACC_REG_CONTROL5        0x2E
 
-//#define ACC_ACCELERATIONS_NEEDED
+#define ACC_ACCELERATIONS_NEEDED
 
 #ifdef ACC_ACCELERATIONS_NEEDED
 struct Accelerations_t {
@@ -42,9 +42,11 @@ struct Accelerations_t {
     int8_t xMSB, xLSB, yMSB, yLSB, zMSB, zLSB;
 } PACKED;
 #define ACCELERATIONS_SIZE     sizeof(Accelerations_t)
+
+#define ACC_KICK_THRESHOLD      36
 #endif
 
-#define ACC_IRQPIN_NEEDED
+//#define ACC_IRQPIN_NEEDED
 
 #ifdef ACC_IRQPIN_NEEDED
 #if ACC_IRQ_PIN == 0
@@ -83,7 +85,7 @@ public:
     }
 #endif
     void Init();
-//    void Task();
+    void Task();
 #ifdef ACC_IRQPIN_NEEDED
     void IIrqHandler();
     PinIrq_t IIrqPin;
