@@ -62,9 +62,8 @@ int main() {
     MassStorage.Init();
 
     Sound.Init();
-    Sound.SetVolume(210);
+    Sound.SetVolume(255);
     Sound.Play("alive.wav");
-//    Sound.SetVolume(255);
 
     // Accelerometer
     i2c.Init(I2C1, GPIOB, 6, 7, 100000, STM32_DMA1_STREAM7, STM32_DMA1_STREAM0);
@@ -105,9 +104,19 @@ void App_t::ITask() {
             chSysUnlock();
             if(rslt == OK) {
                 switch(ksqN) {
+#ifdef FERRUM
                     case 0: Sound.Play("teiwaz.wav"); break;
-                    case 1: Sound.Play("algiz.wav"); break;
-                    case 2: Sound.Play("ansus.wav"); break;
+                    case 1: Sound.Play("algiz.wav");  break;
+                    case 2: Sound.Play("ansus.wav");  break;
+#elif defined AURUM
+                    case 0: Sound.Play("wunyo.wav");  break;
+                    case 1: Sound.Play("sowelu.wav"); break;
+                    case 2: Sound.Play("otilia.wav"); break;
+#elif defined ARGENTUM
+                    case 0: Sound.Play("isa.wav");   break;
+                    case 1: Sound.Play("geba.wav");  break;
+                    case 2: Sound.Play("raido.wav"); break;
+#endif
                     default: break;
                 }
             } // if OK

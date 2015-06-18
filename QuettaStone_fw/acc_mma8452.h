@@ -16,7 +16,7 @@
 #define ACC_IRQ_GPIO            GPIOC
 #define ACC_IRQ_PIN             3
 
-#define ACC_MOTION_TRESHOLD     18      // 1...127. The threshold resolution is 0.063g/LSB.
+#define ACC_MOTION_TRESHOLD     17  // 1...127. The threshold resolution is 0.063g/LSB.
 
 #define ACC_I2C_ADDR            0x1C
 
@@ -44,7 +44,7 @@ struct Accelerations_t {
 #define ACCELERATIONS_SIZE     sizeof(Accelerations_t)
 #endif
 
-//#define ACC_IRQPIN_NEEDED
+#define ACC_IRQPIN_NEEDED
 
 #ifdef ACC_IRQPIN_NEEDED
 #if ACC_IRQ_PIN == 0
@@ -83,7 +83,7 @@ public:
     }
 #endif
     void Init();
-    void Task();
+//    void Task();
 #ifdef ACC_IRQPIN_NEEDED
     void IIrqHandler();
     PinIrq_t IIrqPin;
