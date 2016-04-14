@@ -1,6 +1,6 @@
-update=08/11/2013 11:56:55
+update=14.04.2016 17:46:18
 version=1
-last_client=cvpcb
+last_client=kicad
 [general]
 version=1
 [pcbnew]
@@ -29,28 +29,24 @@ LibName5=Antennas_kl
 LibName6=Sensors
 LibName7=switches
 LibDir=D:/libs/Kicad
-[eeschema]
-version=1
-LibDir=D:/libs/Kicad
-NetFmtName=
-RptD_X=0
-RptD_Y=100
-RptLab=1
-LabSize=60
-[eeschema/libraries]
-LibName1=Connectors_kl
-LibName2=pcb_details
-LibName3=power
-LibName4=Power_kl
-LibName5=RF ICs
-LibName6=st_kl
-LibName7=Tittar_kl
-LibName8=Transistors_kl
-LibName9=Audio_kl
-LibName10=Antennas_kl
-LibName11=Sensors
 [cvpcb]
 version=1
 NetIExt=net
 [cvpcb/libraries]
 EquName1=devcms
+[eeschema]
+version=1
+LibDir=D:/libs/Kicad
+[eeschema/libraries]
+LibName1=Quetta-rescue
+LibName2=Connectors_kl
+LibName3=pcb_details
+LibName4=power
+LibName5=Power_kl
+LibName6=RF ICs
+LibName7=st_kl
+LibName8=Tittar_kl
+LibName9=Transistors_kl
+LibName10=Audio_kl
+LibName11=Antennas_kl
+LibName12=Sensors
