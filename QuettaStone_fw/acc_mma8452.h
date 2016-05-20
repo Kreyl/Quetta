@@ -11,9 +11,10 @@
 #include "kl_lib_f2xx.h"
 #include "ch.h"
 #include "hal.h"
+#include "cmd_uart.h"
 
-#define ACC_IRQ_GPIO            GPIOB
-#define ACC_IRQ_PIN             5
+#define ACC_IRQ_GPIO            GPIOC
+#define ACC_IRQ_PIN             3
 
 #define ACC_MOTION_TRESHOLD     16      // 1...127. The threshold resolution is 0.063g/LSB.
 
@@ -53,7 +54,8 @@ private:
     }
     void IWriteReg(uint8_t AAddr, uint8_t AValue) {
         uint8_t RegAddr = AAddr, RegValue = AValue;
-        i2c.CmdWriteWrite(ACC_I2C_ADDR, &RegAddr, 1, &RegValue, 1);
+        uint8_t r = i2c.CmdWriteWrite(ACC_I2C_ADDR, &RegAddr, 1, &RegValue, 1);
+        if(r != OK) Uart.Printf("WriteReg: %u\r", r);
     }
 public:
 #ifdef ACC_ACCELERATIONS_NEEDED

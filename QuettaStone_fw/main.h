@@ -5,8 +5,7 @@
  *      Author: kreyl
  */
 
-#ifndef MAIN_H_
-#define MAIN_H_
+#pragma once
 
 #include "kl_sd.h"
 
@@ -21,7 +20,6 @@ private:
     Thread *PThread;
     uint8_t ReadConfig();
 public:
-    VirtualTimer TmrSecond, TmrIndication;
     // Eternal methods
     void InitThread() { PThread = chThdSelf(); }
     void SignalEvt(eventmask_t Evt) {
@@ -30,12 +28,8 @@ public:
         chSysUnlock();
     }
     void SignalEvtI(eventmask_t Evt) { chEvtSignalI(PThread, Evt); }
-//    void OnUartCmd(Uart_t *PUart);
     // Inner use
     void ITask();
-//    App_t(): PThread(nullptr), ID(ID_DEFAULT), Mode(mRxVibro) {}
 };
 
 extern App_t App;
-
-#endif /* MAIN_H_ */

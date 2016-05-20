@@ -22,6 +22,7 @@
 
 i2c_t i2c;
 SndList_t SndList;
+App_t App;
 
 // =============================== Main ========================================
 int main() {
@@ -42,13 +43,16 @@ int main() {
     chSysInit();
 
     // ==== Init Hard & Soft ====
+    App.InitThread();
     Uart.Init(115200);
     Uart.Printf("\rEregionStone   AHB freq=%uMHz\r", Clk.AHBFreqHz/1000000);
     SD.Init();
 
     SndList.Init();
+    i2c.Init(I2C1, GPIOB, 6, 7, 400000, STM32_DMA1_STREAM7, STM32_DMA1_STREAM0);
+//    i2c.BusScan();
+    Acc.Init();
 
-//    SndList.Init(" mp3, wav");
     // USB related
 //    PinSetupIn(PWR_EXTERNAL_GPIO, PWR_EXTERNAL_PIN, pudPullDown);
 //    MassStorage.Init();
@@ -58,13 +62,8 @@ int main() {
     Sound.RegisterAppThd(chThdSelf());
 //    Sound.Play("alive.wav");
 
-    SndList.PlayRandomFileFromDir("Sounds");
+//    SndList.PlayRandomFileFromDir("Sounds");
 
-
-
-    // Accelerometer
-
-//    ReadConfig();
     // Report problem with clock if any
     if(ClkResult) Uart.Printf("Clock failure\r");
 #endif
@@ -72,10 +71,23 @@ int main() {
     // ==== Main cycle ====
 //    bool WasExternal = false;
 //    int32_t PreviousPhrase = 0;
+    bool IsPlaying = false;
     while(true) {
-        chThdSleepMilliseconds(5400);
+        eventmask_t EvtMsk = chEvtWaitAny(ALL_EVENTS);
 
-//        SndList.PlayRandomFileFromDir("Sounds");
+#if 1
+        if(EvtMsk & EVTMSK_ACC_IRQ) {
+            Uart.Printf("Acc\r");
+            if(!IsPlaying) {
+                IsPlaying = true;
+                SndList.PlayRandomFileFromDir("Sounds");
+            }
+        }
+#endif
+        if(EvtMsk & EVTMSK_PLAY_ENDS) {
+            Uart.Printf("PlayEnd\r");
+            IsPlaying = false;
+        }
 
 #if 0 // ==== USB connected/disconnected ====
         if(WasExternal and !ExternalPwrOn()) {  // Usb disconnected

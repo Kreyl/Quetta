@@ -17,7 +17,7 @@ void Acc_t::Task() {
     if(PinIsSet(ACC_IRQ_GPIO, ACC_IRQ_PIN)) {  // IRQ occured
 //        Uart.Printf("Irq\r");
         IClearIrq();
-//        App.SignalEvt(EVTMSK_ACC_IRQ);
+        App.SignalEvt(EVTMSK_ACC_IRQ);
     }
 #ifdef ACC_ACCELERATIONS_NEEDED
     ReadAccelerations();

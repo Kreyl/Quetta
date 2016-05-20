@@ -36,15 +36,15 @@ void sd_t::Init() {
     sdcInit();
     sdcStart(&SDCD1, NULL);
     if(sdcConnect(&SDCD1)) {
-        Uart.Printf("\rSD connect error");
+        Uart.Printf("SD connect error\r");
         return;
     }
     else {
-        Uart.Printf("\rSD capacity: %u", SDCD1.capacity);
+        Uart.Printf("SD capacity: %u\r", SDCD1.capacity);
     }
     err = f_mount(0, &SDC_FS);
     if(err != FR_OK) {
-        Uart.Printf("\rSD mount error");
+        Uart.Printf("SD mount error\r");
         sdcDisconnect(&SDCD1);
         return;
     }

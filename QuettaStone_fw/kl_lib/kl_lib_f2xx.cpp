@@ -194,7 +194,7 @@ uint32_t Random(uint32_t TopValue) {
 // =============================== I2C =========================================
 void i2cDmaIrqHandler(void *p, uint32_t flags) {
     chSysLockFromIsr();
-    //Uart.Printf("===T===");
+//    Uart.PrintfI("===T===");
     Thread *PThd = ((i2c_t*)p)->PRequestingThread;
     if (PThd != NULL) {
         ((i2c_t*)p)->PRequestingThread = NULL;
@@ -376,6 +376,33 @@ uint8_t i2c_t::CmdWriteWrite(uint8_t Addr,
     WaitBTF();
     SendStop();
     return OK;
+}
+
+void i2c_t::BusScan() {
+    Uart.Printf("\r     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f");
+    uint8_t AddrHi, Addr;
+    for(AddrHi = 0; AddrHi < 0x80; AddrHi += 0x10) {
+        Uart.Printf("\r%02X: ", AddrHi);
+        for(uint8_t n=0; n<0x10; n++) {
+            Addr = AddrHi + n;
+            if(Addr <= 0x01 or Addr > 0x77) Uart.Printf("   ");
+            else {
+                // Try to get response from addr
+                if(IBusyWait() != OK) return;
+                // Clear flags
+                ii2c->SR1 = 0;
+                while(RxIsNotEmpty()) (void)ii2c->DR;   // Read DR until it empty
+                ClearAddrFlag();
+                // Start transmission
+                SendStart();
+                if(WaitEv5() != OK) continue;
+                SendAddrWithWrite(Addr);
+                if(WaitEv6() == OK) Uart.Printf("%02X ", Addr);
+                else Uart.Printf("__ ");
+                SendStop();
+            }
+        } // for n
+    } // for AddrHi
 }
 
 // ==== Flag operations ====
