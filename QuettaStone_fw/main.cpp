@@ -18,8 +18,9 @@
 #include "evt_mask.h"
 #include "main.h"
 #include "acc_mma8452.h"
+#include "Filelist.h"
 
-SndList_t SndList;
+Filelist_t SndList{", ;mp3, wav"};
 i2c_t i2c;
 
 // =============================== Main ========================================
@@ -42,32 +43,40 @@ int main() {
 
     // ==== Init Hard & Soft ====
     Uart.Init(115200);
+    Uart.Printf("\rEregionStone   AHB freq=%uMHz\r", Clk.AHBFreqHz/1000000);
     SD.Init();
 
+//    SndList.Init(" mp3, wav");
     // USB related
-    PinSetupIn(PWR_EXTERNAL_GPIO, PWR_EXTERNAL_PIN, pudPullDown);
-    MassStorage.Init();
+//    PinSetupIn(PWR_EXTERNAL_GPIO, PWR_EXTERNAL_PIN, pudPullDown);
+//    MassStorage.Init();
 
     Sound.Init();
-    Sound.SetVolume(210);
+    Sound.SetVolume(240);
     Sound.RegisterAppThd(chThdSelf());
-    Sound.Play("alive.wav");
+//    Sound.Play("alive.wav");
+
+    SndList.ScanDir("/");
+
+
+
 
     // Accelerometer
 
 //    ReadConfig();
-    Uart.Printf("\rPortrait   AHB freq=%uMHz", Clk.AHBFreqHz/1000000);
     // Report problem with clock if any
     if(ClkResult) Uart.Printf("Clock failure\r");
 #endif
 
     // ==== Main cycle ====
-    bool WasExternal = false;
+//    bool WasExternal = false;
 //    int32_t PreviousPhrase = 0;
     while(true) {
-        chThdSleepMilliseconds(306);
+        chThdSleepMilliseconds(3006);
 
-#if 1 // ==== USB connected/disconnected ====
+//        if(SndList.FindNext() == OK) Sound.Play(SndList.CurrentName);
+
+#if 0 // ==== USB connected/disconnected ====
         if(WasExternal and !ExternalPwrOn()) {  // Usb disconnected
             WasExternal = false;
             Usb.Shutdown();
@@ -116,6 +125,7 @@ int main() {
     } // while true
 }
 
+/*
 char SndKey[45]="Sound";
 uint8_t ReadConfig() {
     int32_t Probability;
@@ -145,4 +155,4 @@ uint8_t ReadConfig() {
     for(int i=0; i<SndList.Count; i++) Uart.Printf("\r%u %S Bot=%u Top=%u", i, SndList.Phrases[i].Filename, SndList.Phrases[i].ProbBottom, SndList.Phrases[i].ProbTop);
     return OK;
 }
-
+*/

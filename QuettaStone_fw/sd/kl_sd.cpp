@@ -27,6 +27,8 @@ void sd_t::Init() {
     PinSetupAlterFunc(GPIOD,  2, omPushPull, pudPullUp, AF12, ps50MHz); // CMD
     // Power pin
     PinSetupOut(GPIOC, 4, omPushPull, pudNone);
+    PinSet(GPIOC, 4);   // Power off
+    chThdSleepMilliseconds(180);
     PinClear(GPIOC, 4); // Power on
     chThdSleepMilliseconds(270);    // Let power to stabilize
 
@@ -34,15 +36,15 @@ void sd_t::Init() {
     sdcInit();
     sdcStart(&SDCD1, NULL);
     if(sdcConnect(&SDCD1)) {
-        Uart.Printf("\rSD connect error");
+        Uart.Printf("SD connect error\r");
         return;
     }
     else {
-        Uart.Printf("\rSD capacity: %u", SDCD1.capacity);
+        Uart.Printf("SD capacity: %u\r", SDCD1.capacity);
     }
     err = f_mount(0, &SDC_FS);
     if(err != FR_OK) {
-        Uart.Printf("\rSD mount error");
+        Uart.Printf("SD mount error\r");
         sdcDisconnect(&SDCD1);
         return;
     }
@@ -95,7 +97,7 @@ uint8_t sd_t::iniReadString(const char *ASection, const char *AKey, const char *
         if((*StartP != '[') or (*StartP == ';') or (*StartP == '#')) continue;
         EndP = strchr(StartP, ']');
         if((EndP == NULL) or ((int32_t)(EndP-StartP-1) != len)) continue;
-    } while (strnicmp(StartP+1, ASection, len) != 0);
+    } while (strncasecmp(StartP+1, ASection, len) != 0);
 
     // Section found, find the key
     len = strlen(AKey);
@@ -109,7 +111,7 @@ uint8_t sd_t::iniReadString(const char *ASection, const char *AKey, const char *
         if((*StartP == ';') or (*StartP == '#')) continue;
         EndP = strchr(StartP, '=');
         if(EndP == NULL) continue;
-    } while(((int32_t)(skiptrailing(EndP, StartP)-StartP) != len or strnicmp(StartP, AKey, len) != 0));
+    } while(((int32_t)(skiptrailing(EndP, StartP)-StartP) != len or strncasecmp(StartP, AKey, len) != 0));
     f_close(&IFile);
 
     // Process Key's value
