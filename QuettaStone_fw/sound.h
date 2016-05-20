@@ -76,13 +76,17 @@ union VsCmd_t {
 #define VS_INITIAL_ATTENUATION  0x33
 #define VS_CMD_BUF_SZ           4       // Number of cmds in buf
 #define VS_DATA_BUF_SZ          4096    // bytes. Must be multiply of 512.
+#define ZERO_SEQ_LEN            128     // After file end, send several zeroes
+
 
 struct VsBuf_t {
     uint8_t Data[VS_DATA_BUF_SZ], *PData;
     UINT DataSz;
     FRESULT ReadFromFile(FIL *PFile) {
         PData = Data;   // Set pointer at beginning
-        return f_read(PFile, Data, VS_DATA_BUF_SZ, &DataSz);
+        FRESULT rslt = f_read(PFile, Data, VS_DATA_BUF_SZ, &DataSz);
+//        Uart.Printf("\rRead %u\r", DataSz);
+        return rslt;
     }
 };
 
@@ -106,24 +110,26 @@ private:
     int16_t IAttenuation;
     const char* IFilename;
     uint32_t IStartPosition;
-    Thread *IPThd;
+    Thread *IPAppThd;
     // Pin operations
     inline void Rst_Lo()   { PinClear(VS_GPIO, VS_RST); }
     inline void Rst_Hi()   { PinSet(VS_GPIO, VS_RST); }
-    inline void XCS_Lo()   { PinClear(VS_GPIO, VS_XCS); }
-    inline void XCS_Hi()   { PinSet(VS_GPIO, VS_XCS); }
-    inline void XDCS_Lo()  { PinClear(VS_GPIO, VS_XDCS);  }
+    inline void XCS_Lo()   { PinClear(VS_GPIO, VS_XCS); Loop(180); }
+    inline void XCS_Hi()   { PinSet(VS_GPIO, VS_XCS);  }
+    inline void XDCS_Lo()  { PinClear(VS_GPIO, VS_XDCS); Loop(360); }
     inline void XDCS_Hi()  { PinSet(VS_GPIO, VS_XDCS); }
     // Cmds
     uint8_t CmdRead(uint8_t AAddr, uint16_t *AData);
     uint8_t CmdWrite(uint8_t AAddr, uint16_t AData);
     void AddCmd(uint8_t AAddr, uint16_t AData);
     inline void StartTransmissionIfNotBusy() {
+        chSysLock();
         if(IDmaIdle and IDreq.IsHi()) {
-//            Uart.Printf("T");
+//            Uart.PrintfI("\rTXinB");
             IDreq.EnableIrq(IRQ_PRIO_MEDIUM);
             IDreq.GenerateIrq();    // Do not call SendNexData directly because of its interrupt context
         }
+        chSysUnlock();
     }
     void PrepareToStop();
     void SendZeroes();
@@ -158,7 +164,7 @@ public:
         if(IAttenuation > 0x8F) IAttenuation = 0x8F;
         AddCmd(VS_REG_VOL, ((IAttenuation * 256) + IAttenuation));
     }
-    void RegisterAppThd(Thread *PThd) { IPThd = PThd; }
+    void RegisterAppThd(Thread *PThd) { IPAppThd = PThd; }
 
     uint32_t GetPosition() { return IFile.fptr; }
 #if VS_AMPF_EXISTS

@@ -18,10 +18,10 @@
 #include "evt_mask.h"
 #include "main.h"
 #include "acc_mma8452.h"
-#include "Filelist.h"
+#include "Soundlist.h"
 
-Filelist_t SndList{", ;mp3, wav"};
 i2c_t i2c;
+SndList_t SndList;
 
 // =============================== Main ========================================
 int main() {
@@ -46,6 +46,8 @@ int main() {
     Uart.Printf("\rEregionStone   AHB freq=%uMHz\r", Clk.AHBFreqHz/1000000);
     SD.Init();
 
+    SndList.Init();
+
 //    SndList.Init(" mp3, wav");
     // USB related
 //    PinSetupIn(PWR_EXTERNAL_GPIO, PWR_EXTERNAL_PIN, pudPullDown);
@@ -56,8 +58,7 @@ int main() {
     Sound.RegisterAppThd(chThdSelf());
 //    Sound.Play("alive.wav");
 
-    SndList.ScanDir("/");
-
+    SndList.PlayRandomFileFromDir("Sounds");
 
 
 
@@ -72,9 +73,9 @@ int main() {
 //    bool WasExternal = false;
 //    int32_t PreviousPhrase = 0;
     while(true) {
-        chThdSleepMilliseconds(3006);
+        chThdSleepMilliseconds(5400);
 
-//        if(SndList.FindNext() == OK) Sound.Play(SndList.CurrentName);
+//        SndList.PlayRandomFileFromDir("Sounds");
 
 #if 0 // ==== USB connected/disconnected ====
         if(WasExternal and !ExternalPwrOn()) {  // Usb disconnected

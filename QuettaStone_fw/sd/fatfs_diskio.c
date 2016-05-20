@@ -53,7 +53,7 @@ bool SDRead(uint32_t startblk, uint8_t *buffer, uint32_t n) {
         return rslt;
     }
     else {
-        PrintfC("sm%d ", msg);
+        PrintfC("\rSD sem=%d Thd=%S", msg, chThdSelf()->p_name);
         return false;
     }
 }
@@ -272,10 +272,29 @@ DRESULT disk_ioctl (
   return RES_PARERR;
 }
 
+/*
+bit31:25  Year origin from the 1980 (0..127)
+bit24:21  Month (1..12)
+bit20:16  Day of the month(1..31)
+bit15:11  Hour (0..23)
+bit10:5   Minute (0..59)
+bit4:0    Second / 2 (0..29)
+*/
 DWORD get_fattime(void) {
 #if HAL_USE_RTC
     return rtcGetTimeFat(&RTCD1);
 #else
-    return ((uint32_t)0 | (1 << 16)) | (1 << 21); /* wrong but valid time */
+#define FAT_YEAR    2015
+#define FAT_MONTH   1
+#define FAT_DAY     1
+    uint32_t tics = chTimeNow();
+    uint32_t sec = (tics / 1000) % 60;
+    uint32_t min = (tics / (1000 * 60)) % 60;
+    uint32_t hour = (tics / (1000 * 60 * 60)) % 24;
+    uint32_t year  = FAT_YEAR;
+    uint32_t month = FAT_MONTH;
+    uint32_t day   = FAT_DAY;
+    return ((year - 1980) << 25)|(month << 21)|(day << 16)|(hour << 11)|(min << 5)|(sec >> 1);
+    //return ((uint32_t)0 | (1 << 16)) | (1 << 21); /* wrong but valid time */
 #endif
 }
