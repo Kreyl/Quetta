@@ -19,6 +19,7 @@
 #include "main.h"
 #include "acc_mma8452.h"
 #include "Soundlist.h"
+#include "radio_lvl1.h"
 
 i2c_t i2c;
 SndList_t SndList;
@@ -60,6 +61,9 @@ int main() {
     Sound.Init();
     Sound.SetVolume(240);
     Sound.RegisterAppThd(chThdSelf());
+
+    Radio.Init();
+
 //    Sound.Play("alive.wav");
 
 //    SndList.PlayRandomFileFromDir("Sounds");
