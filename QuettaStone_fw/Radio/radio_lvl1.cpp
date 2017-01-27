@@ -30,11 +30,11 @@
 rLevel1_t Radio;
 
 #if 1 // ================================ Task =================================
-static WORKING_AREA(warLvl1Thread, 256);
-static void rLvl1Thread(void *arg) {
-    chRegSetThreadName("rLvl1");
-    Radio.ITask();
-}
+//static WORKING_AREA(warLvl1Thread, 256);
+//static void rLvl1Thread(void *arg) {
+//    chRegSetThreadName("rLvl1");
+//    Radio.ITask();
+//}
 
 void rLevel1_t::ITask() {
     while(true) {

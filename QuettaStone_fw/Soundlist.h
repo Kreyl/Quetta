@@ -21,7 +21,6 @@ private:
     FILINFO FileInfo;
     FRESULT CountFilesInDir(const char* DirName, uint32_t *PCnt);
 public:
-    void Init();
     void PlayRandomFileFromDir(const char* DirName);
 };
 

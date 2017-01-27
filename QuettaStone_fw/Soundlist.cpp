@@ -9,10 +9,6 @@
 #include "cmd_uart.h"
 #include "sound.h"
 
-void SndList_t::Init() {
-
-}
-
 FRESULT SndList_t::CountFilesInDir(const char* DirName, uint32_t *PCnt) {
     FRESULT Rslt = f_opendir(&Dir, DirName);
     if(Rslt != FR_OK) return Rslt;

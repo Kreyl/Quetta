@@ -115,8 +115,8 @@ public:
         *p8 = *PArr;
         return N;
     }
-    static void U16ChangeEndianness(uint16_t *p) { *p = __REV16(*p); }
-    static void U32ChangeEndianness(uint32_t *p) { *p = __REV(*p); }
+//    static void U16ChangeEndianness(uint16_t *p) { *p = __REV16(*p); }
+//    static void U32ChangeEndianness(uint32_t *p) { *p = __REV(*p); }
     static inline uint8_t TryStrToUInt32(char* S, uint32_t *POutput) {
         if(*S == '\0') return EMPTY_STRING;
         char *p;

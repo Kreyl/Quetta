@@ -13,3 +13,5 @@
 #define EVTMSK_PLAY_ENDS        EVENT_MASK(3)
 #define EVTMSK_ACC_IRQ          EVENT_MASK(4)
 
+#define EVTMSK_PAUSE_END        EVENT_MASK(5)
+

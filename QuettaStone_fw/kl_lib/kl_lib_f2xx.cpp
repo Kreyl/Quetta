@@ -265,12 +265,15 @@ void i2c_t::Resume() {
     ii2c->CR2 = tmpreg;
     ii2c->CR1 &= (uint16_t)~I2C_CR1_PE; // Disable i2c to setup TRise & CCR
     ii2c->TRISE = (uint16_t)(((ClkMhz * 300) / 1000) + 1);
+
     // 16/9
     tmpreg = (uint16_t)(Clk.APB1FreqHz / (IBitrateHz * 25));
     if(tmpreg == 0) tmpreg = 1; // minimum allowed value
     tmpreg |= I2C_CCR_FS | I2C_CCR_DUTY;
+//    tmpreg = (uint16_t)((Clk.APB1FreqHz / IBitrateHz) / 2); // Standard mode
     ii2c->CCR = tmpreg;
     ii2c->CR1 |= I2C_CR1_PE;    // Enable i2c back
+//    Uart.Printf("CR2=%X; CCR=%X\r", ii2c->CR2, ii2c->CCR);
     // ==== DMA ====
     ii2c->CR2 |= I2C_CR2_DMAEN;
 }
@@ -337,20 +340,20 @@ uint8_t i2c_t::CmdWriteRead(uint8_t Addr,
 uint8_t i2c_t::CmdWriteWrite(uint8_t Addr,
         uint8_t *WPtr1, uint8_t WLength1,
         uint8_t *WPtr2, uint8_t WLength2) {
-    if(IBusyWait() != OK) return FAILURE;
+    if(IBusyWait() != OK) return 1;
     // Clear flags
     ii2c->SR1 = 0;
     while(RxIsNotEmpty()) (void)ii2c->DR;   // Read DR until it empty
     ClearAddrFlag();
     // Start transmission
     SendStart();
-    if(WaitEv5() != OK) return FAILURE;
+    if(WaitEv5() != OK) return 2;
     SendAddrWithWrite(Addr);
-    if(WaitEv6() != OK) { SendStop(); return FAILURE; }
+    if(WaitEv6() != OK) { SendStop(); return 3; }
     ClearAddrFlag();
     // Start TX DMA if needed
     if(WLength1 != 0) {
-        if(WaitEv8() != OK) return FAILURE;
+        if(WaitEv8() != OK) return 4;
         dmaStreamSetMemory0(PDmaTx, WPtr1);
         dmaStreamSetMode   (PDmaTx, I2C_DMATX_MODE);
         dmaStreamSetTransactionSize(PDmaTx, WLength1);
@@ -362,7 +365,7 @@ uint8_t i2c_t::CmdWriteWrite(uint8_t Addr,
         dmaStreamDisable(PDmaTx);
     }
     if(WLength2 != 0) {
-        if(WaitEv8() != OK) return FAILURE;
+        if(WaitEv8() != OK) return 5;
         dmaStreamSetMemory0(PDmaTx, WPtr2);
         dmaStreamSetMode   (PDmaTx, I2C_DMATX_MODE);
         dmaStreamSetTransactionSize(PDmaTx, WLength2);

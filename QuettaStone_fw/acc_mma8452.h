@@ -16,7 +16,7 @@
 #define ACC_IRQ_GPIO            GPIOC
 #define ACC_IRQ_PIN             3
 
-#define ACC_MOTION_TRESHOLD     16      // 1...127. The threshold resolution is 0.063g/LSB.
+#define ACC_MOTION_TRESHOLD     18      // 1...127. The threshold resolution is 0.063g/LSB.
 
 #define ACC_I2C_ADDR            0x1C
 

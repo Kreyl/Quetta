@@ -21,15 +21,34 @@
 #include "Soundlist.h"
 #include "radio_lvl1.h"
 
+#define PAUSE_AFTER_S   18
+
 i2c_t i2c;
 SndList_t SndList;
 App_t App;
+
+enum State_t { stIdle, stPlaying, stWaiting };
+State_t State = stWaiting;
+
+VirtualTimer tmrPauseAfter;
+
+void tmrPauseAfterCB(void* p) {
+    chSysLockFromIsr();
+    App.SignalEvtI(EVTMSK_PAUSE_END);
+    chSysUnlockFromIsr();
+}
+
+void tmrPauseAfter_Restart() {
+    chSysLock();
+    if(chVTIsArmedI(&tmrPauseAfter)) chVTResetI(&tmrPauseAfter);
+    chVTSetI(&tmrPauseAfter, S2ST(PAUSE_AFTER_S), tmrPauseAfterCB, nullptr);
+    chSysUnlock();
+}
 
 // =============================== Main ========================================
 int main() {
 #if 1 // ==== Init ====
     // ==== Setup clock ====
-    Clk.UpdateFreqValues();
     uint8_t ClkResult = FAILURE;
     Clk.SetupFlashLatency(12);  // Setup Flash Latency for clock in MHz
     // 12 MHz/6 = 2; 2*192 = 384; 384/8 = 48 (preAHB divider); 384/8 = 48 (USB clock)
@@ -49,7 +68,6 @@ int main() {
     Uart.Printf("\rEregionStone   AHB freq=%uMHz\r", Clk.AHBFreqHz/1000000);
     SD.Init();
 
-    SndList.Init();
     i2c.Init(I2C1, GPIOB, 6, 7, 400000, STM32_DMA1_STREAM7, STM32_DMA1_STREAM0);
 //    i2c.BusScan();
     Acc.Init();
@@ -63,35 +81,52 @@ int main() {
     Sound.RegisterAppThd(chThdSelf());
 
     Radio.Init();
+    // LED
+    PinSetupOut(GPIOC, 13, omPushPull);
+    PinSet(GPIOC, 13);
 
-//    Sound.Play("alive.wav");
-
-//    SndList.PlayRandomFileFromDir("Sounds");
+    Sound.Play("alive.wav");
+    chThdSleepMilliseconds(450);
+    PinClear(GPIOC, 13);
 
     // Report problem with clock if any
     if(ClkResult) Uart.Printf("Clock failure\r");
 #endif
 
     // ==== Main cycle ====
-//    bool WasExternal = false;
-//    int32_t PreviousPhrase = 0;
-    bool IsPlaying = false;
     while(true) {
         eventmask_t EvtMsk = chEvtWaitAny(ALL_EVENTS);
+        switch(State) {
+            case stIdle:
+                if(EvtMsk & EVTMSK_ACC_IRQ) {
+                    Uart.Printf("AccWhenIdle\r");
+                    State = stPlaying;
+                    SndList.PlayRandomFileFromDir("Sounds");
+                }
+                break;
 
-#if 1
-        if(EvtMsk & EVTMSK_ACC_IRQ) {
-            Uart.Printf("Acc\r");
-            if(!IsPlaying) {
-                IsPlaying = true;
-                SndList.PlayRandomFileFromDir("Sounds");
-            }
-        }
-#endif
-        if(EvtMsk & EVTMSK_PLAY_ENDS) {
-            Uart.Printf("PlayEnd\r");
-            IsPlaying = false;
-        }
+            case stPlaying:
+                if(EvtMsk & EVTMSK_PLAY_ENDS) {
+                    Uart.Printf("PlayEnd\r");
+                    tmrPauseAfter_Restart();
+                    State = stWaiting;
+                }
+                break;
+
+            case stWaiting:
+                if(EvtMsk & EVTMSK_ACC_IRQ) {
+//                    Uart.Printf("AccWhenW\r");
+                    tmrPauseAfter_Restart();
+                    PinSet(GPIOC, 13);
+                    chThdSleepMilliseconds(18);
+                    PinClear(GPIOC, 13);
+                }
+                else if(EvtMsk & EVTMSK_PAUSE_END) {
+                    Uart.Printf("PauseEnd\r");
+                    State = stIdle;
+                }
+                break;
+        } // switch
 
 #if 0 // ==== USB connected/disconnected ====
         if(WasExternal and !ExternalPwrOn()) {  // Usb disconnected

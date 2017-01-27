@@ -52,10 +52,10 @@ enum McoDiv_t {mcoDiv1=0x00000000, mcoDiv2=0x04000000, mcoDiv3=0x05000000, mcoDi
 
 class Clk_t {
 private:
-    uint8_t HSEEnable();
     uint8_t HSIEnable();
     uint8_t PLLEnable();
 public:
+    uint8_t HSEEnable();
     // Frequency values
     uint32_t AHBFreqHz;     // HCLK: AHB Buses, Core, Memory, DMA; 120 MHz max
     uint32_t APB1FreqHz;    // PCLK1: APB1 Bus clock; 30 MHz max
