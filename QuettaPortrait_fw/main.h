@@ -1,54 +1,73 @@
-/*
- * main.h
- *
- *  Created on: 30.03.2013
- *      Author: kreyl
- */
+#pragma once
 
-#ifndef MAIN_H_
-#define MAIN_H_
+#include "ch.h"
+#include "hal.h"
+#include "kl_lib.h"
+#include "uart.h"
+#include "evt_mask.h"
+//#include "kl_adc.h"
+#include "board.h"
 
-// External Power Input
-#define PWR_EXTERNAL_GPIO   GPIOA
-#define PWR_EXTERNAL_PIN    9
-static inline bool ExternalPwrOn() { return  PinIsSet(PWR_EXTERNAL_GPIO, PWR_EXTERNAL_PIN); }
-
-// External sensors
-class Sns_t {
+class App_t {
 private:
-    bool IsHi() const { return PinIsSet(PGpioPort, PinNumber); }
+    thread_t *PThread; // Main thread
 public:
-    GPIO_TypeDef *PGpioPort;
-    uint16_t PinNumber;
-    bool WasHi;
-    void Init() const { PinSetupIn(PGpioPort, PinNumber, pudPullDown); }
-    RiseFall_t CheckEdge() {
-        if(!WasHi and IsHi()) {
-            WasHi = true;
-            return Rising;
-        }
-        else if(WasHi and !IsHi()) {
-            WasHi = false;
-            return Falling;
-        }
-        else return NoRiseNoFall;
+    void InitThread() { PThread = chThdGetSelfX(); }
+    void SignalEvt(uint32_t EvtMsk) {
+        chSysLock();
+        chEvtSignalI(PThread, EvtMsk);
+        chSysUnlock();
     }
+    void SignalEvtI(eventmask_t Evt) { chEvtSignalI(PThread, Evt); }
+    void OnCmd(Shell_t *PShell);
+    // Inner use
+    void ITask();
+};
+extern App_t App;
+
+// Lauca is warmth, ringe is cold
+class Laucaringe_t {
+private:
+    const PinOutputPWM_t IChnl;
+    const PinOutput_t Dir1, Dir2;
+public:
+    void Init() {
+        IChnl.Init();
+        IChnl.Set(0);
+        Dir1.Init();
+        Dir2.Init();
+    }
+    void Set(int32_t Intencity) {
+        if(Intencity > 0) {
+            Dir1.SetHi();
+            Dir2.SetLo();
+        }
+        else if(Intencity < 0) {
+            Dir1.SetLo();
+            Dir2.SetHi();
+            Intencity = -Intencity;
+        }
+        else { // 0
+            Dir1.SetLo();
+            Dir2.SetLo();
+        }
+        IChnl.Set(Intencity);
+    }
+
+    Laucaringe_t(const PwmSetup_t APwmSetup, GPIO_TypeDef *APGPIO1, uint16_t APin1, GPIO_TypeDef *APGPIO2, uint16_t APin2) :
+                IChnl(APwmSetup),
+                Dir1(APGPIO1, APin1, omPushPull), Dir2(APGPIO2, APin2, omPushPull)  {}
 };
 
-// ==== Sound files ====
-#define SND_COUNT_MAX   100
+#define FILT_SZ     11
 
-struct Snd_t {
-     char Filename[MAX_NAME_LEN];
-     uint32_t ProbBottom, ProbTop;
+class Filter_t {
+private:
+    uint32_t Buf[FILT_SZ];
+    uint32_t Cnt = 0;
+public:
+    void Put(uint32_t v) { if(Cnt < FILT_SZ) Buf[Cnt++] = v; }
+    void Flush() { Cnt = 0; }
+    bool IsReady() { return (Cnt == FILT_SZ); }
+    uint32_t GetResult() { return FindMediana<uint32_t>(Buf, FILT_SZ);  }
 };
-
-struct SndList_t {
-    Snd_t Phrases[SND_COUNT_MAX];
-    int32_t Count;
-    int32_t ProbSumm;
-};
-
-uint8_t ReadConfig();
-
-#endif /* MAIN_H_ */

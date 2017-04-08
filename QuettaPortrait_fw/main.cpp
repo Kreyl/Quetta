@@ -1,148 +1,103 @@
 /*
  * File:   main.cpp
- * Author: Kreyl
- * Project: klNfcF0
+ * Author: Elessar
+ * Project: MasonOrder
  *
- * Created on May 27, 2011, 6:37 PM
+ * Created on May 27, 2016, 6:37 PM
  */
 
-#include "ch.h"
-#include "hal.h"
-
-#include "kl_lib_f2xx.h"
-#include "kl_sd.h"
-#include "sound.h"
-#include "cmd_uart.h"
-#include "ff.h"
-#include "MassStorage.h"
-#include "evt_mask.h"
 #include "main.h"
+#include "kl_lib.h"
+#include "led.h"
+#include "Sequences.h"
+#include "kl_adc.h"
 
-Sns_t Sns = {GPIOA, 0};
-SndList_t SndList;
+#if 1 // =========================== Locals ====================================
+App_t App;
 
-// =============================== Main ========================================
+//LedOnOff_t LedState(LED_PIN);
+
+#endif
 int main() {
-#if 1 // ==== Init ====
     // ==== Setup clock ====
-    Clk.UpdateFreqValues();
-    uint8_t ClkResult = FAILURE;
-    Clk.SetupFlashLatency(12);  // Setup Flash Latency for clock in MHz
-    // 12 MHz/6 = 2; 2*192 = 384; 384/8 = 48 (preAHB divider); 384/8 = 48 (USB clock)
-    Clk.SetupPLLDividers(6, 192, pllSysDiv8, 8);
-    // 48/4 = 12 MHz core clock. APB1 & APB2 clock derive on AHB clock
-    Clk.SetupBusDividers(ahbDiv4, apbDiv1, apbDiv1);
-    if((ClkResult = Clk.SwitchToPLL()) == 0) Clk.HSIDisable();
+//    Clk.SetHiPerfMode();
+    Clk.SwitchToHSE();
     Clk.UpdateFreqValues();
 
     // ==== Init OS ====
     halInit();
     chSysInit();
+    App.InitThread();
 
     // ==== Init Hard & Soft ====
-    Uart.Init(115200);
-    SD.Init();
+    Uart.Init(115200, UART_GPIO, UART_TX_PIN, UART_GPIO, UART_RX_PIN);
+    Uart.Printf("\r%S %S\r\n", APP_NAME, BUILD_TIME);
+    Clk.PrintFreqs();
 
-    // USB related
-    PinSetupIn(PWR_EXTERNAL_GPIO, PWR_EXTERNAL_PIN, pudPullDown);
-    MassStorage.Init();
+    // LEDs
+//    LedState.Init();
+//    LedState.On();
 
-    Sound.Init();
-    Sound.SetVolume(255);
-    Sound.RegisterAppThd(chThdSelf());
-    Sound.Play("alive.wav");
-
-    // Sensor
-    Sns.Init();
-
-    ReadConfig();
-    Uart.Printf("\rPortrait   AHB freq=%uMHz", Clk.AHBFreqHz/1000000);
-    // Report problem with clock if any
-    if(ClkResult) Uart.Printf("Clock failure\r");
-#endif
+//    Adc.Init();
+//    Adc.EnableVRef();
+//    Adc.TmrInitAndStart();
 
     // ==== Main cycle ====
-    bool WasExternal = false;
-    int32_t PreviousPhrase = 0;
+    App.ITask();
+}
+
+__noreturn
+void App_t::ITask() {
     while(true) {
-        chThdSleepMilliseconds(306);
+        uint32_t Evt = chEvtWaitAny(ALL_EVENTS);
 
-#if 1 // ==== USB connected/disconnected ====
-        if(WasExternal and !ExternalPwrOn()) {
-            WasExternal = false;
-            Usb.Shutdown();
-            MassStorage.Reset();
-            chSysLock();
-            Clk.SetFreq12Mhz();
-            Clk.InitSysTick();
-            chSysUnlock();
-            Uart.Printf("\rUsb Off");
-        }
-        else if(!WasExternal and ExternalPwrOn()) {
-            WasExternal = true;
-            chSysLock();
-            Clk.SetFreq48Mhz();
-            Clk.InitSysTick();
-            chSysUnlock();
-            Usb.Init();
-            chThdSleepMilliseconds(540);
-            Usb.Connect();
-            Uart.Printf("\rUsb On");
-        }
+#if ADC_REQUIRED
+        if(Evt & EVT_SAMPLING) Adc.StartMeasurement();
+        if(Evt & EVT_ADC_DONE) {
+            if(Adc.FirstConversion) Adc.FirstConversion = false;
+            else {
+//                uint32_t VBat_adc = Adc.GetResult(ADC_CHNL_BATTERY);
+                uint32_t VRef_adc = Adc.GetResult(ADC_CHNL_VREFINT);
+//                uint32_t Vbat_mv = (156 * Adc.Adc2mV(VBat_adc, VRef_adc)) / 56;   // Resistor divider 56k & 100k
+//                Uart.Printf("VBat_adc: %u; Vref_adc: %u; VBat_mv: %u\r", VBat_adc, VRef_adc, Vbat_mv);
+                uint32_t VLr[LR_CNT];
+                bool Ready = false;
+                for(int i=0; i<LR_CNT; i++) {
+                    uint32_t v = Adc.GetResult(AdcChannels[i]);
+                    v = Adc.Adc2mV(v, VRef_adc);
+                    Filt[i].Put(v);
+                    if(Filt[i].IsReady()) {
+                        VLr[i] = Filt[i].GetResult();
+                        Filt[i].Flush();
+                        Ready = true;
+                    }
+                }
+
+                if(Ready) Uart.Printf("%u %u %u %u   %u %u %u %u\r",
+                        VLr[0],VLr[1],VLr[2],VLr[3], VLr[4],VLr[5],VLr[6],VLr[7]);
+
+//                int32_t Vbat_mv = (2 * Adc.Adc2mV(VBat_adc, VRef_adc));   // Resistor divider
+//                if(Vbat_mv < 3500) SignalEvt(EVT_BATTERY_LOW);
+            } // if not big diff
+        } // evt
 #endif
 
-#if 1 // ==== Sensor ====
-      if(Sns.CheckEdge() == Rising) {
-          if(Sound.State == sndStopped) {
-              Uart.Printf("\rDetected");
-//              Sound.Play("alive.wav");
-              // Generate random
-              int32_t i;
-              do {
-                  uint32_t r = rand() % SndList.ProbSumm + 1; // [1; Probsumm]
-                  //uint32_t r = Random(SndList.ProbSumm-1) + 1;
-                  Uart.Printf("\rR=%u", r);
-                  // Select phrase
-                  for(i=0; i<SndList.Count-1; i++) { // do not check last phrase
-                      if((r >= SndList.Phrases[i].ProbBottom) and (r <= SndList.Phrases[i].ProbTop)) break;
-                  }
-              } while(i == PreviousPhrase);
-              PreviousPhrase = i;
-              // Play phrase
-              Sound.Play(SndList.Phrases[i].Filename);
-          }
-      }
-#endif
+        if(Evt & EVT_UART_NEW_CMD) {
+            OnCmd((Shell_t*)&Uart);
+            Uart.SignalCmdProcessed();
+        }
     } // while true
 }
 
-char SndKey[45]="Sound";
-uint8_t ReadConfig() {
-    int32_t Probability;
-    if(SD.iniReadInt32("Sound", "Count", "settings.ini", &SndList.Count) != OK) return FAILURE;
-    Uart.Printf("\rCount: %d", SndList.Count);
-    if (SndList.Count <= 0) return FAILURE;
-    char *c;
-    SndList.ProbSumm = 0;
-    // Read sounds data
-    for(int i=0; i<SndList.Count; i++) {
-        // Build SndKey
-        c = Convert::Int32ToStr(i+1, &SndKey[5]);   // first symbol after "Sound"
-        strcpy(c, "Name");
-//        Uart.Printf("\r%s", SndKey);
-        // Read filename and probability
-        char *S = nullptr;
-        if(SD.iniReadString("Sound", SndKey, "settings.ini", &S) != OK) return FAILURE;
-        strcpy(SndList.Phrases[i].Filename, S);
-        strcpy(c, "Prob");
-//        Uart.Printf("\r%s", SndKey);
-        if(SD.iniReadInt32 ("Sound", SndKey, "settings.ini", &Probability) != OK) return FAILURE;
-        // Calculate probability boundaries
-        SndList.Phrases[i].ProbBottom = SndList.ProbSumm;
-        SndList.ProbSumm += Probability;
-        SndList.Phrases[i].ProbTop = SndList.ProbSumm;
-    }
-    for(int i=0; i<SndList.Count; i++) Uart.Printf("\r%u %S Bot=%u Top=%u", i, SndList.Phrases[i].Filename, SndList.Phrases[i].ProbBottom, SndList.Phrases[i].ProbTop);
-    return OK;
-}
+#if 1 // ======================= Command processing ============================
+void App_t::OnCmd(Shell_t *PShell) {
+    Cmd_t *PCmd = &PShell->Cmd;
+//    Uart.Printf("\r%S\r", PCmd->Name);
+    // Handle command
+    if(PCmd->NameIs("Ping")) PShell->Ack(retvOk);
 
+    else if(PCmd->NameIs("Version")) PShell->Printf("%S %S\r", APP_NAME, BUILD_TIME);
+
+    else PShell->Ack(retvCmdUnknown);
+}
+#endif
