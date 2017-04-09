@@ -519,7 +519,7 @@ static WCHAR LfnBuf[_MAX_LFN+1];
 
 ---------------------------------------------------------------------------*/
 
-extern void PrintfC(const char *format, ...);
+//extern void PrintfC(const char *format, ...);
 /*-----------------------------------------------------------------------*/
 /* String functions                                                      */
 /*-----------------------------------------------------------------------*/
@@ -2019,8 +2019,6 @@ FRESULT chk_mounted (	/* FR_OK(0): successful, !=0: any error occurred */
 	const TCHAR *p = *path;
 	FATFS *fs;
 
-	PrintfC("%S %S %u %u\r", __FUNCTION__, p, *rfs, chk_wp);
-
 	/* Get logical drive number from the path name */
 	vol = p[0] - '0';					/* Is there a drive number? */
 	if (vol <= 9 && p[1] == ':') {		/* Found a drive number, get and strip it */
@@ -2032,7 +2030,6 @@ FRESULT chk_mounted (	/* FR_OK(0): successful, !=0: any error occurred */
 		vol = 0;						/* Use drive 0 */
 #endif
 	}
-	PrintfC("%S vol %u\r", __FUNCTION__, vol);
 
 	/* Check if the file system object is valid or not */
 	if (vol >= _VOLUMES) 				/* Is the drive number valid? */
@@ -2050,14 +2047,12 @@ FRESULT chk_mounted (	/* FR_OK(0): successful, !=0: any error occurred */
 			return FR_OK;				/* The file system object is valid */
 		}
 	}
-	PrintfC("%S is not valid\r", __FUNCTION__);
 	/* The file system object is not valid. */
 	/* Following code attempts to mount the volume. (analyze BPB and initialize the fs object) */
 
 	fs->fs_type = 0;					/* Clear the file system object */
 	fs->drv = LD2PD(vol);				/* Bind the logical drive and a physical drive */
 	stat = disk_initialize(fs->drv);	/* Initialize low level disk I/O layer */
-	PrintfC("%S stat %u\r", __FUNCTION__, stat);
 	if (stat & STA_NOINIT)				/* Check if the initialization succeeded */
 		return FR_NOT_READY;			/* Failed to initialize due to no media or hard error */
 	if (!_FS_READONLY && chk_wp && (stat & STA_PROTECT))	/* Check disk write protection if needed */
@@ -2068,7 +2063,6 @@ FRESULT chk_mounted (	/* FR_OK(0): successful, !=0: any error occurred */
 #endif
 	/* Search FAT partition on the drive. Supports only generic partitionings, FDISK and SFD. */
 	fmt = check_fs(fs, bsect = 0);		/* Load sector 0 and check if it is an FAT-VBR (in SFD) */
-	PrintfC("%S fmt %u\r", __FUNCTION__, fmt);
 	if (LD2PT(vol) && !fmt) fmt = 1;	/* Force non-SFD if the volume is forced partition */
 	if (fmt == 1) {						/* Not an FAT-VBR, the physical drive can be partitioned */
 		/* Check the partition listed in the partition table */
@@ -2256,7 +2250,6 @@ FRESULT f_open (
 	BYTE *dir;
 	DEF_NAMEBUF;
 
-	PrintfC("%S\r", __FUNCTION__);
 	fp->fs = 0;			/* Clear file object */
 
 #if !_FS_READONLY
@@ -2266,13 +2259,11 @@ FRESULT f_open (
 	mode &= FA_READ;
 	res = chk_mounted(&path, &dj.fs, 0);
 #endif
-	PrintfC("a: %d\r", res);
 
 	INIT_BUF(dj);
 	if (res == FR_OK)
 		res = follow_path(&dj, path);	/* Follow the file path */
 	dir = dj.dir;
-	PrintfC("b: %d\r", res);
 #if !_FS_READONLY	/* R/W configuration */
 	if (res == FR_OK) {
 		if (!dir)	/* Current dir itself */
@@ -2293,7 +2284,6 @@ FRESULT f_open (
 #else
 				res = dir_register(&dj);
 #endif
-				PrintfC("c: %d\r", res);
 			mode |= FA_CREATE_ALWAYS;		/* File is created */
 			dir = dj.dir;					/* 0; // new entry */
 		}
@@ -2324,7 +2314,6 @@ FRESULT f_open (
 		}
 	}
 	else {	/* Open an existing file */
-	    PrintfC("d: %d\r", res);
 		if (res == FR_OK) {						/* Follow succeeded */
 			if (dir[DIR_Attr] & AM_DIR) {		/* It is a directory */
 				res = FR_NO_FILE;
@@ -2334,7 +2323,6 @@ FRESULT f_open (
 			}
 		}
 	}
-	PrintfC("e: %d\r", res);
 	if (res == FR_OK) {
 		if (mode & FA_CREATE_ALWAYS)			/* Set file change flag if created or overwritten */
 			mode |= FA__WRITTEN;
@@ -2357,7 +2345,6 @@ FRESULT f_open (
 	}
 #endif
 	FREE_BUF();
-	PrintfC("f: %d\r", res);
 	if (res == FR_OK) {
 		fp->flag = mode;					/* File access mode */
 		fp->sclust = LD_CLUST(dir);			/* File start cluster */
@@ -2375,7 +2362,6 @@ FRESULT f_open (
 
 
 
-//extern void PrintfC(const char *format, ...);
 /*-----------------------------------------------------------------------*/
 /* Read File                                                             */
 /*-----------------------------------------------------------------------*/

@@ -98,3 +98,9 @@
 #endif // ADC
 
 #endif // DMA
+
+#if 1 // =============================== SDIO ==================================
+#define STM32_PLL48CLK      48000000
+#define STM32_SDIO_DIV_HS   2   // Work clock:    48MHz / (2+2)   = 12MHz
+#define STM32_SDIO_DIV_LS   120 // Initial clock: 48MHz / (120+2) = 393kHz, less than 400
+#endif

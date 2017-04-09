@@ -206,24 +206,19 @@ static bool sdc_lld_prepare_write(SDCDriver *sdcp, uint32_t startblk,
  */
 static bool sdc_lld_wait_transaction_end(SDCDriver *sdcp, uint32_t n,
                                          uint32_t *resp) {
-    PrintfC("%S\r", __FUNCTION__);
   /* Note the mask is checked before going to sleep because the interrupt
      may have occurred before reaching the critical zone.*/
   osalSysLock();
   if (sdcp->sdio->MASK != 0)
     osalThreadSuspendS(&sdcp->thread);
-  PrintfC("%S A\r", __FUNCTION__);
   if ((sdcp->sdio->STA & SDIO_STA_DATAEND) == 0) {
     osalSysUnlock();
-    PrintfC("%S B\r", __FUNCTION__);
     return HAL_FAILED;
   }
-  PrintfC("%S C\r", __FUNCTION__);
 #if (defined(STM32F4XX) || defined(STM32F2XX))
   /* Wait until DMA channel enabled to be sure that all data transferred.*/
   while (sdcp->dma->stream->CR & STM32_DMA_CR_EN)
     ;
-  PrintfC("%S D\r", __FUNCTION__);
   /* DMA event flags must be manually cleared.*/
   dmaStreamClearInterrupt(sdcp->dma);
 
@@ -247,7 +242,6 @@ static bool sdc_lld_wait_transaction_end(SDCDriver *sdcp, uint32_t n,
   /* Finalize transaction.*/
   if (n > 1)
     return sdc_lld_send_cmd_short_crc(sdcp, MMCSD_CMD_STOP_TRANSMISSION, 0, resp);
-  PrintfC("%S E\r", __FUNCTION__);
   return HAL_SUCCESS;
 }
 
@@ -678,7 +672,6 @@ error:
 bool sdc_lld_read_aligned(SDCDriver *sdcp, uint32_t startblk,
                           uint8_t *buf, uint32_t blocks) {
   uint32_t resp[1];
-  PrintfC("%S start %u; N %u\r", __FUNCTION__, startblk, blocks);
   osalDbgCheck(blocks < 0x1000000 / MMCSD_BLOCK_SIZE);
 
   sdcp->sdio->DTIMER = STM32_SDC_READ_TIMEOUT;
@@ -712,10 +705,8 @@ bool sdc_lld_read_aligned(SDCDriver *sdcp, uint32_t startblk,
 
   if (sdc_lld_prepare_read(sdcp, startblk, blocks, resp) == TRUE)
     goto error;
-  PrintfC("%S 1\r", __FUNCTION__);
   if (sdc_lld_wait_transaction_end(sdcp, blocks, resp) == TRUE)
     goto error;
-  PrintfC("%S 2\r", __FUNCTION__);
   return HAL_SUCCESS;
 
 error:

@@ -117,7 +117,7 @@
  * @note    Unaligned transfers are much slower.
  */
 #if !defined(STM32_SDC_SDIO_UNALIGNED_SUPPORT) || defined(__DOXYGEN__)
-#define STM32_SDC_SDIO_UNALIGNED_SUPPORT    TRUE
+#define STM32_SDC_SDIO_UNALIGNED_SUPPORT    FALSE
 #endif
 /** @} */
 
@@ -155,34 +155,10 @@
 #define STM32_DMA_REQUIRED
 #endif
 
-/*
- * SDIO clock divider.
- */
-#if (defined(STM32F4XX) || defined(STM32F2XX))
-#define STM32_SDIO_DIV_HS                   0
-#define STM32_SDIO_DIV_LS                   120
-
-#elif STM32_HCLK > 48000000
-#define STM32_SDIO_DIV_HS                   1
-#define STM32_SDIO_DIV_LS                   178
-#else
-
-#define STM32_SDIO_DIV_HS                   0
-#define STM32_SDIO_DIV_LS                   118
-#endif
-
 /**
  * @brief   SDIO data timeouts in SDIO clock cycles.
  */
 #if (defined(STM32F4XX) || defined(STM32F2XX))
-//#if !STM32_CLOCK48_REQUIRED
-//#error "SDIO requires STM32_CLOCK48_REQUIRED to be enabled"
-//#endif
-
-//#if STM32_PLL48CLK != 48000000
-//#error "invalid STM32_PLL48CLK clock value"
-//#endif
-#define STM32_PLL48CLK  48000000    // @KL
 
 #define STM32_SDC_WRITE_TIMEOUT                                             \
   (((STM32_PLL48CLK / (STM32_SDIO_DIV_HS + 2)) / 1000) *                    \

@@ -26,7 +26,6 @@
 
 #include "hal.h"
 
-extern void PrintfC(const char *format, ...);
 
 #if (HAL_USE_SDC == TRUE) || defined(__DOXYGEN__)
 
@@ -801,7 +800,6 @@ bool sdcDisconnect(SDCDriver *sdcp) {
  */
 bool sdcRead(SDCDriver *sdcp, uint32_t startblk, uint8_t *buf, uint32_t n) {
   bool status;
-  PrintfC("%S start %u; N %u\r", __FUNCTION__, startblk, n);
   osalDbgCheck((sdcp != NULL) && (buf != NULL) && (n > 0U));
   osalDbgAssert(sdcp->state == BLK_READY, "invalid state");
 
@@ -814,7 +812,6 @@ bool sdcRead(SDCDriver *sdcp, uint32_t startblk, uint8_t *buf, uint32_t n) {
   sdcp->state = BLK_READING;
 
   status = sdc_lld_read(sdcp, startblk, buf, n);
-  PrintfC("%S status %u\r", __FUNCTION__, status);
   /* Read operation finished.*/
   sdcp->state = BLK_READY;
   return status;
