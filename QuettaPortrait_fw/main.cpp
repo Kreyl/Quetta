@@ -11,6 +11,7 @@
 #include "led.h"
 #include "Sequences.h"
 #include "kl_adc.h"
+#include "kl_sd.h"
 
 #if 1 // =========================== Locals ====================================
 App_t App;
@@ -21,7 +22,14 @@ App_t App;
 int main() {
     // ==== Setup clock ====
 //    Clk.SetHiPerfMode();
-    Clk.SwitchToHSE();
+    Clk.SetupFlashLatency(12);  // Setup Flash Latency for clock in MHz
+    // 12 MHz/6 = 2; 2*192 = 384; 384/8 = 48 (preAHB divider); 384/8 = 48 (USB clock)
+    Clk.SetupPllMulDiv(6, 192, pllSysDiv8, 8);
+    // 48/4 = 12 MHz core clock. APB1 & APB2 clock derive on AHB clock
+    Clk.SetupBusDividers(ahbDiv4, apbDiv1, apbDiv1);
+    uint8_t ClkResult = retvFail;
+    if((ClkResult = Clk.SwitchToPLL()) == 0) Clk.DisableHSI();
+
     Clk.UpdateFreqValues();
 
     // ==== Init OS ====
@@ -34,6 +42,11 @@ int main() {
     Uart.Printf("\r%S %S\r\n", APP_NAME, BUILD_TIME);
     Clk.PrintFreqs();
 
+    SD.Init();
+    int32_t Cnt;
+    if(SD.iniReadInt32("Sound", "Count", "config.ini", &Cnt) == retvOk) {
+        Uart.Printf("\rCount: %d", Cnt);
+    }
     // LEDs
 //    LedState.Init();
 //    LedState.On();

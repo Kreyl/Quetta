@@ -57,7 +57,7 @@
 //#include "pwm.h"
 //#include "rtc.h"
 //#include "serial.h"
-//#include "sdc.h"
+#include "sdc.h"
 //#include "spi.h"
 //#include "uart.h"
 //#include "usb.h"
