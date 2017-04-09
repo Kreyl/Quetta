@@ -898,6 +898,8 @@ public:
 #endif // INDIVIDUAL_EXTI_IRQ_REQUIRED
     }
 
+    bool IsHi() { return PinIsHi(PGpio, PinN); }
+
     void SetTriggerType(ExtiTrigType_t ATriggerType) const {
         uint32_t IrqMsk = 1 << PinN;
         switch(ATriggerType) {

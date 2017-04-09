@@ -12,4 +12,4 @@
 
 #define EVT_SAMPLING            EVENT_MASK(6)
 #define EVT_ADC_DONE            EVENT_MASK(7)
-
+#define EVT_PLAY_ENDS           EVENT_MASK(8)

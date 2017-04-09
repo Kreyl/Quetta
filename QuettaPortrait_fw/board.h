@@ -37,6 +37,22 @@
 // LEDs
 #define LED_PIN         GPIOB, 9, omPushPull
 
+// Sound
+#define VS_GPIO         GPIOB
+#define VS_XCS          3
+#define VS_XDCS         8
+#define VS_RST          4
+#define VS_DREQ         2
+#define VS_XCLK         13
+#define VS_SO           14
+#define VS_SI           15
+// Amplifier
+#define VS_AMPF_EXISTS  TRUE
+#define VS_AMPF_GPIO    GPIOA
+#define VS_AMPF_PIN     15
+#define VS_SPI          SPI2
+#define VS_AF           AF5
+
 #endif // GPIO
 
 #if I2C_REQUIRED // ====================== I2C =================================
@@ -96,6 +112,17 @@
                         STM32_DMA_CR_DIR_P2M |    /* Direction is peripheral to memory */ \
                         STM32_DMA_CR_TCIE         /* Enable Transmission Complete IRQ */
 #endif // ADC
+
+// Sound
+#define VS_DMA          STM32_DMA1_STREAM4
+#define VS_DMA_CHNL     0
+#define VS_DMA_MODE     STM32_DMA_CR_CHSEL(VS_DMA_CHNL) | \
+                        DMA_PRIORITY_LOW | \
+                        STM32_DMA_CR_MSIZE_BYTE | \
+                        STM32_DMA_CR_PSIZE_BYTE | \
+                        STM32_DMA_CR_DIR_M2P |    /* Direction is memory to peripheral */ \
+                        STM32_DMA_CR_TCIE         /* Enable Transmission Complete IRQ */
+
 
 #endif // DMA
 

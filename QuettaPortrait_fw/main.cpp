@@ -12,6 +12,7 @@
 #include "Sequences.h"
 #include "kl_adc.h"
 #include "kl_sd.h"
+#include "sound.h"
 
 #if 1 // =========================== Locals ====================================
 App_t App;
@@ -43,10 +44,10 @@ int main() {
     Clk.PrintFreqs();
 
     SD.Init();
-    int32_t Cnt;
-    if(SD.iniReadInt32("Sound", "Count", "config.ini", &Cnt) == retvOk) {
-        Uart.Printf("\rCount: %d", Cnt);
-    }
+//    int32_t Cnt;
+//    if(SD.iniReadInt32("Sound", "Count", "config.ini", &Cnt) == retvOk) {
+//        Uart.Printf("\rCount: %d", Cnt);
+//    }
     // LEDs
 //    LedState.Init();
 //    LedState.On();
@@ -54,6 +55,10 @@ int main() {
 //    Adc.Init();
 //    Adc.EnableVRef();
 //    Adc.TmrInitAndStart();
+
+    Sound.Init();
+    Sound.SetVolume(255);
+    Sound.Play("alive.wav");
 
     // ==== Main cycle ====
     App.ITask();
