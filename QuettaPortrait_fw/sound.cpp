@@ -36,7 +36,7 @@ static void SoundThread(void *arg) {
     Sound.ITask();
 }
 
-__attribute__((noreturn))
+__noreturn
 void Sound_t::ITask() {
     while(true) {
         eventmask_t EvtMsk = chEvtWaitAny(ALL_EVENTS);
@@ -79,7 +79,7 @@ void Sound_t::ITask() {
             }
             // Check if was EOF or if error occured during reading. Do not do it if EOF occured during reading.
 //            if(rslt != FR_OK) Uart.Printf("\rsndReadErr=%u", rslt);
-            if((rslt != FR_OK) or EofAtStart) PrepareToStop();
+            if((rslt != FR_OK) or (EofAtStart and IDmaIdle and (Buf1.DataSz == 0) and (Buf2.DataSz == 0))) PrepareToStop();
             else StartTransmissionIfNotBusy();
         }
     } // while true
@@ -145,11 +145,11 @@ void Sound_t::IPlayNew() {
 
     FRESULT rslt;
     // Open new file
-    Uart.Printf("\rPlay %S at %u", IFilename, IStartPosition);
+    Uart.Printf("Play %S at %u\r", IFilename, IStartPosition);
     rslt = f_open(&IFile, IFilename, FA_READ+FA_OPEN_EXISTING);
     if(rslt != FR_OK) {
-        if (rslt == FR_NO_FILE) Uart.Printf("\r%S: not found", IFilename);
-        else Uart.Printf("\rOpenFile error: %u", rslt);
+        if (rslt == FR_NO_FILE) Uart.Printf("%S: not found\r", IFilename);
+        else Uart.Printf("OpenFile error: %u\r", rslt);
         IFilename = NULL;
         Stop();
         return;
@@ -158,7 +158,7 @@ void Sound_t::IPlayNew() {
     // Check if zero file
     if(IFile.fsize == 0) {
         f_close(&IFile);
-        Uart.Printf("\rEmpty file");
+        Uart.Printf("Empty file\r");
         Stop();
         return;
     }
