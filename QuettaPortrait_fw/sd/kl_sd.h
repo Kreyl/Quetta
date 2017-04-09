@@ -5,13 +5,13 @@
  *      Author: kreyl
  */
 
-#ifndef SD_H_
-#define SD_H_
+#pragma once
 
 #include "ff.h"
 #include "ch.h"
 #include "hal.h"
 #include "kl_lib.h"
+#include "uart.h"
 
 #define MAX_NAME_LEN    128
 
@@ -48,10 +48,17 @@ public:
     bool IsReady;
     void Init();
     // ini file operations
-    uint8_t iniReadString(const char *ASection, const char *AKey, const char *AFileName, char **PPOutput);
-    uint8_t iniReadInt32 (const char *ASection, const char *AKey, const char *AFileName, int32_t *POutput);
+    uint8_t iniReadString(const char *AFileName, const char *ASection, const char *AKey, char **PPOutput);
+    template <typename T>
+    uint8_t iniRead(const char *AFileName, const char *ASection, const char *AKey, T *POutput) {
+        char *S = nullptr;
+        if(iniReadString(AFileName, ASection, AKey, &S) == retvOk) {
+            int32_t tmp = strtol(S, NULL, 10);
+            *POutput = (T)tmp;
+            return retvOk;
+        }
+        else return retvFail;
+    }
 };
 
 extern sd_t SD;
-
-#endif /* SD_H_ */

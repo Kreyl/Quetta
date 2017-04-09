@@ -67,19 +67,19 @@ static inline char* striptrailing(char *S) {
     return S;
 }
 
-uint8_t sd_t::iniReadString(const char *ASection, const char *AKey, const char *AFileName, char **PPOutput) {
+uint8_t sd_t::iniReadString(const char *AFileName, const char *ASection, const char *AKey, char **PPOutput) {
     FRESULT rslt;
     // Open file
     rslt = f_open(&IFile, AFileName, FA_READ+FA_OPEN_EXISTING);
     if(rslt != FR_OK) {
-        if (rslt == FR_NO_FILE) Uart.Printf("\r%S: not found", AFileName);
-        else Uart.Printf("\r%S: openFile error: %u", AFileName, rslt);
+        if (rslt == FR_NO_FILE) Uart.Printf("%S: not found\r", AFileName);
+        else Uart.Printf("%S: openFile error: %u\r", AFileName, rslt);
         return retvFail;
     }
     // Check if zero file
     if(IFile.fsize == 0) {
         f_close(&IFile);
-        Uart.Printf("\rEmpty file");
+        Uart.Printf("Empty file\r");
         return retvFail;
     }
     // Move through file one line at a time until a section is matched or EOF.
@@ -87,7 +87,7 @@ uint8_t sd_t::iniReadString(const char *ASection, const char *AKey, const char *
     int32_t len = strlen(ASection);
     do {
         if(f_gets(IStr, SD_STRING_SZ, &IFile) == nullptr) {
-            Uart.Printf("\riniNoSection %S", ASection);
+            Uart.Printf("iniNoSection %S\r", ASection);
             f_close(&IFile);
             return retvFail;
         }
@@ -101,7 +101,7 @@ uint8_t sd_t::iniReadString(const char *ASection, const char *AKey, const char *
     len = strlen(AKey);
     do {
         if(!f_gets(IStr, SD_STRING_SZ, &IFile) or *(StartP = skipleading(IStr)) == '[') {
-            Uart.Printf("\riniNoKey");
+            Uart.Printf("iniNoKey\r");
             f_close(&IFile);
             return retvFail;
         }
@@ -127,15 +127,6 @@ uint8_t sd_t::iniReadString(const char *ASection, const char *AKey, const char *
     striptrailing(StartP);
     *PPOutput = StartP;
     return retvOk;
-}
-
-uint8_t sd_t::iniReadInt32(const char *ASection, const char *AKey, const char *AFileName, int32_t *POutput) {
-    char *S = nullptr;
-    if(iniReadString(ASection, AKey, AFileName, &S) == retvOk) {
-        *POutput = strtol(S, NULL, 10);
-        return retvOk;
-    }
-    else return retvFail;
 }
 #endif
 

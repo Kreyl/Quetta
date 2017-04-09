@@ -147,7 +147,7 @@ void Sound_t::IPlayNew() {
     // Open new file
     Uart.Printf("\rPlay %S at %u", IFilename, IStartPosition);
     rslt = f_open(&IFile, IFilename, FA_READ+FA_OPEN_EXISTING);
-    if (rslt != FR_OK) {
+    if(rslt != FR_OK) {
         if (rslt == FR_NO_FILE) Uart.Printf("\r%S: not found", IFilename);
         else Uart.Printf("\rOpenFile error: %u", rslt);
         IFilename = NULL;
@@ -156,7 +156,7 @@ void Sound_t::IPlayNew() {
     }
     IFilename = NULL;
     // Check if zero file
-    if (IFile.fsize == 0) {
+    if(IFile.fsize == 0) {
         f_close(&IFile);
         Uart.Printf("\rEmpty file");
         Stop();
@@ -225,9 +225,7 @@ void Sound_t::ISendNextData() {
         if(PBuf->DataSz == 0) {
             // Prepare to read next chunk
 //            Uart.Printf("*");
-            chSysLock();
-            chEvtSignalI(PThread, VS_EVT_READ_NEXT);
-            chSysUnlock();
+            chEvtSignal(PThread, VS_EVT_READ_NEXT);
             // Switch to next buf
             PBuf = (PBuf == &Buf1)? &Buf2 : &Buf1;
         }

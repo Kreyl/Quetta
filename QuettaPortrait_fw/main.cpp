@@ -13,13 +13,48 @@
 #include "kl_adc.h"
 #include "kl_sd.h"
 #include "sound.h"
+#include "Soundlist.h"
 
 #if 1 // =========================== Locals ====================================
 App_t App;
+SndList_t SndList;
 
 //LedOnOff_t LedState(LED_PIN);
 
+#define PASS_LEN_MAX    8
+class Pass_t {
+private:
+    uint32_t Len = 0;
+    uint8_t Seq[PASS_LEN_MAX];
+public:
+    uint8_t Append(uint8_t N) {
+        if(Len >= PASS_LEN_MAX) return retvOverflow;
+        else {
+            Seq[Len++] = N;
+            return retvOk;
+        }
+    }
+    void Clear() { Len = 0; }
+    bool IsEqual(Pass_t &APass) {
+        if(Len == APass.Len) {
+            for(uint32_t i=0; i<Len; i++) {
+                if(Seq[i] != APass.Seq[i]) return false;
+            }
+        }
+        else return false;
+        return true;
+    }
+    void Print() {
+        Uart.Printf("Pass: ");
+        for(uint32_t i=0; i<Len; i++) Uart.Printf("%u ", Seq[i]);
+        Uart.Printf("\r");
+    }
+};
+
+Pass_t PassCorrect, PassEntered;
+
 #endif
+
 int main() {
     // ==== Setup clock ====
 //    Clk.SetHiPerfMode();
@@ -44,10 +79,26 @@ int main() {
     Clk.PrintFreqs();
 
     SD.Init();
-//    int32_t Cnt;
-//    if(SD.iniReadInt32("Sound", "Count", "config.ini", &Cnt) == retvOk) {
-//        Uart.Printf("\rCount: %d", Cnt);
-//    }
+
+    // Read pass
+    PassCorrect.Clear();
+    uint32_t Cnt;
+    if(SD.iniRead<uint32_t>("config.ini", "Pass", "Count", &Cnt) == retvOk) {
+        Uart.Printf("Count: %u\r", Cnt);
+        for(u32 i=1; i<=Cnt; i++) {
+            char KeyName[9] = "Point";
+            itoa(i, &KeyName[5], 10);
+            if(i < 10) KeyName[6] = 0;
+            else KeyName[7] = 0;
+            uint8_t Point;
+            if(SD.iniRead<uint8_t>("config.ini", "Pass", KeyName, &Point) == retvOk) {
+                PassCorrect.Append(Point);
+            }
+            else break;
+        }
+        PassCorrect.Print();
+    }
+
     // LEDs
 //    LedState.Init();
 //    LedState.On();
@@ -115,6 +166,13 @@ void App_t::OnCmd(Shell_t *PShell) {
     if(PCmd->NameIs("Ping")) PShell->Ack(retvOk);
 
     else if(PCmd->NameIs("Version")) PShell->Printf("%S %S\r", APP_NAME, BUILD_TIME);
+
+    else if(PCmd->NameIs("k")) Sound.Play("knock.wav");
+    else if(PCmd->NameIs("b")) SndList.PlayRandomFileFromDir("BadKey");
+    else if(PCmd->NameIs("c")) SndList.PlayRandomFileFromDir("Closing");
+    else if(PCmd->NameIs("g")) SndList.PlayRandomFileFromDir("GoodKey");
+    else if(PCmd->NameIs("r")) SndList.PlayRandomFileFromDir("Ready");
+    else if(PCmd->NameIs("t")) SndList.PlayRandomFileFromDir("TooManyTries");
 
     else PShell->Ack(retvCmdUnknown);
 }
