@@ -380,9 +380,9 @@ IrqHandler_t *ExtiIrqHandler_0_1, *ExtiIrqHandler_2_3, *ExtiIrqHandler_4_15;
 #endif
 #endif // INDIVIDUAL_EXTI_IRQ_REQUIRED
 
-#if defined STM32L1XX || defined STM32L4XX
+#if defined STM32L1XX || defined STM32F2XX || defined STM32L4XX
 // EXTI pending register
-#if defined STM32L1XX
+#if defined STM32L1XX || defined STM32F2XX
 #define EXTI_PENDING_REG    EXTI->PR
 #elif defined STM32L4XX
 #define EXTI_PENDING_REG    EXTI->PR1

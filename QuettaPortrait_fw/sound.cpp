@@ -29,7 +29,7 @@ void SIrqDmaHandler(void *p, uint32_t flags) {
 } // extern c
 
 // =========================== Implementation ==================================
-static THD_WORKING_AREA(waSoundThread, 512);
+static THD_WORKING_AREA(waSoundThread, 1024);
 __noreturn
 static void SoundThread(void *arg) {
     chRegSetThreadName("Sound");
@@ -41,7 +41,7 @@ void Sound_t::ITask() {
     while(true) {
         eventmask_t EvtMsk = chEvtWaitAny(ALL_EVENTS);
         if(EvtMsk & VS_EVT_DMA_DONE) {
-            ISpi.WaitBsyLo();               // Wait SPI transaction end
+            ISpi.WaitBsyHi2Lo();            // Wait SPI transaction end
             XCS_Hi();                       // }
             XDCS_Hi();                      // } Stop SPI
             if(IDreq.IsHi()) ISendNextData();   // More data allowed, send it now

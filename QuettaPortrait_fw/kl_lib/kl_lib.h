@@ -1120,6 +1120,7 @@ public:
     void WaitFTLVLZero() const { while(PSpi->SR & SPI_SR_FTLVL); }
 #endif
     void WaitBsyHi2Lo()  const { while(PSpi->SR & SPI_SR_BSY); }
+    void WaitTxEHi()     const { while(!(PSpi->SR & SPI_SR_TXE)); }
     void ClearRxBuf()    const { while(PSpi->SR & SPI_SR_RXNE) (void)PSpi->DR; }
     uint8_t ReadWriteByte(uint8_t AByte) const {
         *((volatile uint8_t*)&PSpi->DR) = AByte;
