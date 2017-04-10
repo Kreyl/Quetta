@@ -96,7 +96,7 @@ void LedWs_t::ISetCurrentColors() {
     dmaStreamEnable(LEDWS_DMA);
 }
 
-#if 1 // ============================ Effects ==================================
+#if 0 // ============================ Effects ==================================
 Effects_t Effects;
 
 #define CHUNK_CNT   9

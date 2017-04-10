@@ -15,6 +15,7 @@
 #include "sound.h"
 #include "Soundlist.h"
 #include "ws2812b.h"
+#include "Effects.h"
 
 #if 1 // =========================== Locals ====================================
 App_t App;
@@ -102,6 +103,7 @@ int main() {
 
     // LEDs
     Effects.Init();
+//    Effects.Flashes();
     Effects.AllTogetherSmoothly(clGreen, 360);
 //    Effects.AllTogetherNow(clRed);
 
@@ -157,7 +159,7 @@ void App_t::ITask() {
 #endif
 
         if(Evt & EVT_LED_DONE) {
-            Effects.AllTogetherSmoothly(clBlack, 630);
+//            Effects.AllTogetherSmoothly(clBlack, 630);
         }
 
         if(Evt & EVT_UART_NEW_CMD) {

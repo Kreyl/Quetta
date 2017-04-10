@@ -21,7 +21,7 @@
 #include "color.h"
 #include "uart.h"
 
-#define LED_CNT             8   // Number of WS2812 LEDs
+#define LED_CNT             27   // Number of WS2812 LEDs
 
 #define SEQ_LEN             8
 #define RST_W_CNT           2 // zero words after data to produce reset
@@ -47,7 +47,7 @@ public:
 
 extern LedWs_t LedWs;
 
-#if 1 // ============================== Effects ================================
+#if 0 // ============================== Effects ================================
 enum EffState_t {effIdle, effAllSmoothly, effChunkRunningRandom};
 
 class LedChunk_t {
