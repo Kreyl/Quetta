@@ -36,6 +36,9 @@
 
 // LEDs
 #define LED_PIN         GPIOB, 9, omPushPull
+// WS2812
+#define LEDWS_PIN       GPIOA, 7, omPushPull, pudNone, AF5, psHigh
+#define LEDWS_SPI       SPI1
 
 // Sound
 #define VS_GPIO         GPIOB
@@ -101,6 +104,12 @@
 #define UART_DMA_TX     STM32_DMA1_STREAM6
 #define UART_DMA_RX     STM32_DMA1_STREAM5
 #define UART_DMA_CHNL   4
+
+// SDIO
+#define STM32_SDC_SDIO_DMA_STREAM   STM32_DMA_STREAM_ID(2, 3)
+
+#define LEDWS_DMA       STM32_DMA2_STREAM5  // SPI1 TX
+#define LEDWS_DMA_CHNL  3                   // DMA2 Stream5 ch3
 
 #if ADC_REQUIRED
 #define ADC_DMA         STM32_DMA2_STREAM0

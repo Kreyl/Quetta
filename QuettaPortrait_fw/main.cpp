@@ -14,6 +14,7 @@
 #include "kl_sd.h"
 #include "sound.h"
 #include "Soundlist.h"
+#include "ws2812b.h"
 
 #if 1 // =========================== Locals ====================================
 App_t App;
@@ -58,11 +59,11 @@ Pass_t PassCorrect, PassEntered;
 int main() {
     // ==== Setup clock ====
 //    Clk.SetHiPerfMode();
-    Clk.SetupFlashLatency(12);  // Setup Flash Latency for clock in MHz
-    // 12 MHz/6 = 2; 2*192 = 384; 384/8 = 48 (preAHB divider); 384/8 = 48 (USB clock)
-    Clk.SetupPllMulDiv(6, 192, pllSysDiv8, 8);
-    // 48/4 = 12 MHz core clock. APB1 & APB2 clock derive on AHB clock
-    Clk.SetupBusDividers(ahbDiv4, apbDiv1, apbDiv1);
+    Clk.SetupFlashLatency(16);  // Setup Flash Latency for clock in MHz
+    // 12 MHz/12 = 1; 1*192 = 192; 192/6 = 32 (preAHB divider); 192/4 = 48 (USB clock)
+    Clk.SetupPllMulDiv(12, 192, pllSysDiv6, 4);
+    // 32/2 = 16 MHz core clock. APB1 & APB2 clock derive on AHB clock
+    Clk.SetupBusDividers(ahbDiv2, apbDiv1, apbDiv1);
     uint8_t ClkResult = retvFail;
     if((ClkResult = Clk.SwitchToPLL()) == 0) Clk.DisableHSI();
 
@@ -84,7 +85,7 @@ int main() {
     PassCorrect.Clear();
     uint32_t Cnt;
     if(SD.iniRead<uint32_t>("config.ini", "Pass", "Count", &Cnt) == retvOk) {
-        Uart.Printf("Count: %u\r", Cnt);
+//        Uart.Printf("Count: %u\r", Cnt);
         for(u32 i=1; i<=Cnt; i++) {
             char KeyName[9] = "Point";
             itoa(i, &KeyName[5], 10);
@@ -100,6 +101,10 @@ int main() {
     }
 
     // LEDs
+    Effects.Init();
+    Effects.AllTogetherSmoothly(clGreen, 360);
+//    Effects.AllTogetherNow(clRed);
+
 //    LedState.Init();
 //    LedState.On();
 
@@ -151,6 +156,10 @@ void App_t::ITask() {
         } // evt
 #endif
 
+        if(Evt & EVT_LED_DONE) {
+            Effects.AllTogetherSmoothly(clBlack, 630);
+        }
+
         if(Evt & EVT_UART_NEW_CMD) {
             OnCmd((Shell_t*)&Uart);
             Uart.SignalCmdProcessed();
@@ -173,6 +182,16 @@ void App_t::OnCmd(Shell_t *PShell) {
     else if(PCmd->NameIs("g")) SndList.PlayRandomFileFromDir("GoodKey");
     else if(PCmd->NameIs("r")) SndList.PlayRandomFileFromDir("Ready");
     else if(PCmd->NameIs("t")) SndList.PlayRandomFileFromDir("TooManyTries");
+
+    else if(PCmd->NameIs("RGB")) {
+        Color_t Clr;
+        if(PCmd->GetParams<uint8_t>(3, &Clr.R, &Clr.G, &Clr.B) == retvOk) {
+            Effects.AllTogetherNow(Clr);
+        }
+        else PShell->Ack(retvCmdError);
+    }
+    else if(PCmd->NameIs("w")) Effects.AllTogetherNow(clGreen);
+    else if(PCmd->NameIs("e")) Effects.AllTogetherNow(clBlue);
 
     else PShell->Ack(retvCmdUnknown);
 }

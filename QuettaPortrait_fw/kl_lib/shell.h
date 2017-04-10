@@ -69,6 +69,7 @@ public:
         return retvOk;
     }
 
+    // Example: GetParams<uint8_t>(3, &R, &G, &B)
     template <typename T>
     uint8_t GetParams(uint8_t Cnt, ...) {
         uint8_t Rslt = retvOk;

@@ -216,7 +216,7 @@
 #define STM32_SDC_READ_TIMEOUT_MS           25
 #define STM32_SDC_CLOCK_ACTIVATION_DELAY    10
 #define STM32_SDC_SDIO_UNALIGNED_SUPPORT    FALSE
-#define STM32_SDC_SDIO_DMA_STREAM           STM32_DMA_STREAM_ID(2, 3)
+//#define STM32_SDC_SDIO_DMA_STREAM           STM32_DMA_STREAM_ID(2, 3) // @KL: put it to board.h
 
 /*
  * SERIAL driver system settings.
