@@ -22,7 +22,7 @@
 #define SYS_TIM_CLK     (Clk.APB1FreqHz) // OS timer settings
 #define I2C_REQUIRED    FALSE
 #define ADC_REQUIRED    FALSE
-#define SIMPLESENSORS_ENABLED   FALSE
+#define SIMPLESENSORS_ENABLED   TRUE
 
 #if 1 // ========================== GPIO =======================================
 // UART
@@ -39,6 +39,14 @@
 // WS2812
 #define LEDWS_PIN       GPIOA, 7, omPushPull, pudNone, AF5, psHigh
 #define LEDWS_SPI       SPI1
+
+// Sensors
+#define SNS1_PIN        GPIOA, 0, pudPullDown
+#define SNS2_PIN        GPIOA, 1, pudPullDown
+#define SNS3_PIN        GPIOC, 5, pudPullDown
+#define SNS4_PIN        GPIOA, 4, pudPullDown
+#define SNS5_PIN        GPIOA, 10, pudPullDown
+
 
 // Sound
 #define VS_GPIO         GPIOB

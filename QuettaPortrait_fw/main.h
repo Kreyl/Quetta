@@ -8,17 +8,27 @@
 //#include "kl_adc.h"
 #include "board.h"
 
+//#define EVT_Q_SZ    18
+
 class App_t {
 private:
     thread_t *PThread; // Main thread
+//    mailbox_t EvtBox;
+//    msg_t EvtBuf[EVT_Q_SZ];
 public:
-    void InitThread() { PThread = chThdGetSelfX(); }
+    void Init() {
+        PThread = chThdGetSelfX();
+//        chMBObjectInit(&EvtBox, EvtBuf, EVT_Q_SZ);
+    }
     void SignalEvt(uint32_t EvtMsk) {
         chSysLock();
         chEvtSignalI(PThread, EvtMsk);
         chSysUnlock();
     }
     void SignalEvtI(eventmask_t Evt) { chEvtSignalI(PThread, Evt); }
+//    void SendMsg(void *p) {
+//        chMBPost(&EvtBox, (msg_t)p, TIME_IMMEDIATE);
+//    }
     void OnCmd(Shell_t *PShell);
     // Inner use
     void ITask();

@@ -46,6 +46,10 @@ uint32_t ICalcDelayN(uint32_t n, uint32_t ASmoothValue) {
     if(DelayB > Rslt) Rslt = DelayB;
     return Rslt;
 }
+
+bool Effects_t::AreOff() {
+    return LedWs.AreOff();
+}
 #endif
 
 #if 1 // ============================= Sinus ===================================
@@ -262,7 +266,9 @@ static void EffectsThread(void *arg) {
     chRegSetThreadName("Effects");
     while(true) {
         switch(IState) {
-            case effIdle: chThdSleep(TIME_INFINITE); break;
+            case effIdle:
+                chThdSleep(TIME_INFINITE);
+                break;
 
             case effAllSmoothly: {
                 uint32_t Delay = 0;
@@ -300,6 +306,7 @@ void Effects_t::AllTogetherNow(Color_t Color) {
 }
 
 void Effects_t::AllTogetherSmoothly(Color_t Color, uint32_t ASmoothValue) {
+    Uart.Printf("%S\r", __FUNCTION__);
     if(ASmoothValue == 0) AllTogetherNow(Color);
     else {
         chSysLock();

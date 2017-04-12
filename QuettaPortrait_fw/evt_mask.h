@@ -10,6 +10,8 @@
 // Event masks
 #define EVT_UART_NEW_CMD        EVENT_MASK(1)
 
+#define EVT_BUTTONS             EVENT_MASK(2)
+
 #define EVT_LED_DONE            EVENT_MASK(4)
 
 #define EVT_SAMPLING            EVENT_MASK(6)

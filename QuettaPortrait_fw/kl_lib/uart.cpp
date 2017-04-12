@@ -205,7 +205,7 @@ void Uart_t::Init(uint32_t ABaudrate, GPIO_TypeDef *PGpioTx, const uint16_t APin
     dmaStreamSetMode      (UART_DMA_RX, UART_DMA_RX_MODE);
     dmaStreamEnable       (UART_DMA_RX);
     // Thread
-    IPThd = chThdCreateStatic(waUartRxThread, sizeof(waUartRxThread), LOWPRIO, UartRxThread, NULL);
+    IPThd = chThdCreateStatic(waUartRxThread, sizeof(waUartRxThread), NORMALPRIO, UartRxThread, NULL);
 #else // if UART_RX_ENABLED
     UART->CR1 = USART_CR1_TE;     // Transmitter enabled
 #if UART_USE_DMA

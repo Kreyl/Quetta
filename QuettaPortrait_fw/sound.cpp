@@ -90,7 +90,6 @@ void Sound_t::Init() {
     PinSetupOut(VS_GPIO, VS_RST, omPushPull);
     PinSetupOut(VS_GPIO, VS_XCS, omPushPull);
     PinSetupOut(VS_GPIO, VS_XDCS, omPushPull);
-    Rst_Lo();
     XCS_Hi();
     XDCS_Hi();
     PinSetupAlterFunc(VS_GPIO, VS_XCLK, omPushPull, pudNone, VS_AF);
@@ -102,7 +101,7 @@ void Sound_t::Init() {
 #endif
 
     // ==== SPI init ====
-    ISpi.Setup(boMSB, cpolIdleLow, cphaFirstEdge, sclkDiv4);
+    ISpi.Setup(boMSB, cpolIdleLow, cphaFirstEdge, sclkDiv8);
     ISpi.Enable();
     ISpi.EnableTxDma();
 
@@ -120,7 +119,10 @@ void Sound_t::Init() {
     chMBObjectInit(&CmdBox, CmdBuf, VS_CMD_BUF_SZ);
 
     // ==== Init VS ====
+    Rst_Lo();
+    chThdSleepMilliseconds(180);
     Rst_Hi();
+    chThdSleepMilliseconds(45);
     Clk.EnableMCO1(mco1HSE, mcoDiv1);   // Only after reset, as pins are grounded when Rst is Lo
     chThdSleepMicroseconds(45);
     // ==== DREQ IRQ ====

@@ -39,6 +39,12 @@ private:
     void AppendBitsMadeOfByte(uint8_t Byte);
 public:
     void Init();
+    bool AreOff() {
+        for(uint8_t i=0; i<LED_CNT; i++) {
+            if(ICurrentClr[i] != clBlack) return false;
+        }
+        return true;
+    }
     // Inner use
     Color_t ICurrentClr[LED_CNT];
     void ISetCurrentColors();

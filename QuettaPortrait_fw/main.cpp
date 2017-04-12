@@ -16,6 +16,8 @@
 #include "Soundlist.h"
 #include "ws2812b.h"
 #include "Effects.h"
+#include "SimpleSensors.h"
+#include "buttons.h"
 
 #if 1 // =========================== Locals ====================================
 App_t App;
@@ -73,7 +75,7 @@ int main() {
     // ==== Init OS ====
     halInit();
     chSysInit();
-    App.InitThread();
+    App.Init();
 
     // ==== Init Hard & Soft ====
     Uart.Init(115200, UART_GPIO, UART_TX_PIN, UART_GPIO, UART_RX_PIN);
@@ -104,11 +106,14 @@ int main() {
     // LEDs
     Effects.Init();
 //    Effects.Flashes();
-    Effects.AllTogetherSmoothly(clGreen, 360);
+//    Effects.AllTogetherSmoothly(clGreen, 360);
 //    Effects.AllTogetherNow(clRed);
 
 //    LedState.Init();
 //    LedState.On();
+
+    // Sensors
+    SimpleSensors::Init();
 
 //    Adc.Init();
 //    Adc.EnableVRef();
@@ -158,8 +163,16 @@ void App_t::ITask() {
         } // evt
 #endif
 
+        if(Evt & EVT_BUTTONS) {
+            BtnEvtInfo_t EInfo;
+            while(BtnGetEvt(&EInfo) == retvOk) {
+                Sound.Play("Knock.wav");
+
+            }
+        }
+
         if(Evt & EVT_LED_DONE) {
-//            Effects.AllTogetherSmoothly(clBlack, 630);
+            if(!Effects.AreOff()) Effects.AllTogetherSmoothly(clBlack, 630);
         }
 
         if(Evt & EVT_UART_NEW_CMD) {
@@ -172,7 +185,7 @@ void App_t::ITask() {
 #if 1 // ======================= Command processing ============================
 void App_t::OnCmd(Shell_t *PShell) {
     Cmd_t *PCmd = &PShell->Cmd;
-//    Uart.Printf("\r%S\r", PCmd->Name);
+    Uart.Printf("\r%S\r", PCmd->Name);
     // Handle command
     if(PCmd->NameIs("Ping")) PShell->Ack(retvOk);
 
@@ -192,8 +205,13 @@ void App_t::OnCmd(Shell_t *PShell) {
         }
         else PShell->Ack(retvCmdError);
     }
-    else if(PCmd->NameIs("w")) Effects.AllTogetherNow(clGreen);
-    else if(PCmd->NameIs("e")) Effects.AllTogetherNow(clBlue);
+    else if(PCmd->NameIs("RGBs")) {
+        Color_t Clr;
+        if(PCmd->GetParams<uint8_t>(3, &Clr.R, &Clr.G, &Clr.B) == retvOk) {
+            Effects.AllTogetherSmoothly(Clr, 360);
+        }
+        else PShell->Ack(retvCmdError);
+    }
 
     else PShell->Ack(retvCmdUnknown);
 }

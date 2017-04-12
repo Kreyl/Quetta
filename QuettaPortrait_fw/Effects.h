@@ -37,6 +37,7 @@ private:
     thread_t *PThd;
 public:
     void Init();
+    bool AreOff();
     // Effects
     void AllTogetherNow(Color_t Color);
     void AllTogetherSmoothly(Color_t Color, uint32_t ASmoothValue);
