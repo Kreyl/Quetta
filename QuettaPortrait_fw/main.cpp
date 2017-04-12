@@ -43,8 +43,11 @@ private:
     uint8_t CorrectSeq[PASS_LEN_MAX];
     uint8_t EnteredSeq[PASS_LEN_MAX];
 public:
-    PassAppendRslt_t Enter(uint8_t N) {
-        EnteredSeq[EnteredLen++] = N;
+    void Enter(uint8_t N) {
+        if(EnteredLen < CorrectLen) EnteredSeq[EnteredLen++] = N;
+    }
+
+    PassAppendRslt_t Check() {
         PassAppendRslt_t Rslt = parCorrect;
         if(EnteredLen == CorrectLen) {
             for(uint32_t i=0; i<CorrectLen; i++) {
@@ -83,8 +86,10 @@ public:
 };
 
 Pass_t Pass;
+bool MustKnock = true;
+bool SpeakTooManyTriesEnd = false;
 
-uint8_t BtnHandler(uint8_t BtnID);
+void BtnHandler();
 #endif
 
 int main() {
@@ -160,7 +165,7 @@ int main() {
 
 __noreturn
 void App_t::ITask() {
-    uint8_t BtnID = 0;
+    bool MustCheck = false;
     while(true) {
         uint32_t Evt = chEvtWaitAny(ALL_EVENTS);
 
@@ -197,38 +202,43 @@ void App_t::ITask() {
 
         if(Evt & EVT_BUTTONS) {
             BtnEvtInfo_t EInfo;
-            if(BtnGetEvt(&EInfo) == retvOk) {
-                uint8_t Retv = retvOk;
-                if(Sound.State != sndStopped and BtnID != 0) Retv = BtnHandler(BtnID);
-                if(Retv == retvOk) {
-                    Sound.Play("Knock.wav");
-                    BtnID = EInfo.BtnID+1;
-                    BtnHandler(EInfo.BtnID+1);
-                }
+            if(BtnGetEvt(&EInfo) == retvOk and MustKnock) {
+                Sound.Play("knock.wav");
+                Pass.Enter(EInfo.BtnID+1);
+                MustCheck = true;
             }
         }
 
         if(Evt & EVT_PLAY_ENDS) {
-            if(BtnID != 0) {
-                BtnHandler(BtnID);
-                BtnID = 0;
+            MustKnock = true;
+            if(MustCheck) {
+                MustCheck = false;
+                BtnHandler();
             }
         }
 
         if(Evt & EVT_PRESS_TIMEOUT) {
             Uart.Printf("PressTO\r");
+            Effects.AllTogetherSmoothly(clDarkBlue, 360);
             State = staIdle;
             Pass.Clear();
         }
         if(Evt & EVT_DOOR_OPEN_END) {
             Uart.Printf("DoorOpenTO\r");
+            MustKnock = false;
             SndList.PlayRandomFileFromDir("Closing");
             State = staIdle;
+            Pass.Clear();
         }
         if(Evt & EVT_TOOMANYTRIES_END) {
             Uart.Printf("TriesTO\r");
-            //SndList.PlayRandomFileFromDir("Ready");
+            Pass.TryCnt = 0;
+            if(SpeakTooManyTriesEnd) {
+                MustKnock = false;
+                SndList.PlayRandomFileFromDir("Ready");
+            }
             State = staIdle;
+            Pass.Clear();
         }
 
         if(Evt & EVT_LED_DONE) {
@@ -242,41 +252,46 @@ void App_t::ITask() {
     } // while true
 }
 
-uint8_t BtnHandler(uint8_t BtnID) {
-    Uart.Printf("Sta %u; Btn %u\r", State, BtnID);
-    uint8_t RetVal = retvOk;
+void BtnHandler() {
+    Uart.Printf("Sta %u; ", State);
+    Pass.PrintEntered();
     switch(State) {
         case staIdle:
-            Pass.Clear();
             State = staEnteringPass;
             // No break here intentonally
 
         case staEnteringPass: {
-            PassAppendRslt_t Rslt = Pass.Enter(BtnID);
+            PassAppendRslt_t Rslt = Pass.Check();
             switch(Rslt) {
                 case parCorrect:
                     TmrBtnPress.Stop();
                     TmrTooManyTries.Stop();
                     Pass.TryCnt = 0;
+                    Pass.Clear();
                     TmrDoorOpen.StartOrRestart();
                     SndList.PlayRandomFileFromDir("GoodKey");
+                    Effects.AllTogetherSmoothly(clGreen, 360);
+                    MustKnock = false;
                     State = staDoorOpen;
-                    RetVal = retvBusy;
                     break;
 
                 case parIncorrect:
                     TmrBtnPress.Stop();
                     TmrTooManyTries.StartOrRestart();   // Always reset try cnt after a while
                     Pass.TryCnt++;
+                    Pass.Clear();
                     if(Pass.TryCnt < PASS_TRY_CNT) {
+                        SpeakTooManyTriesEnd = false;
                         SndList.PlayRandomFileFromDir("BadKey");
+                        Effects.AllTogetherSmoothly(clRed, 360);
+                        MustKnock = false;
                         State = staIdle;
-                        RetVal = retvBusy;
                     }
                     else { // too many tries
+                        SpeakTooManyTriesEnd = true;
                         SndList.PlayRandomFileFromDir("TooManyTries");
+                        MustKnock = false;
                         State = staTooManyTries;
-                        RetVal = retvBusy;
                     }
                     break;
 
@@ -287,14 +302,15 @@ uint8_t BtnHandler(uint8_t BtnID) {
         } break;
 
         case staTooManyTries:
+            Pass.Clear();
             SndList.PlayRandomFileFromDir("TooManyTries");
-            RetVal = retvBusy;
+            MustKnock = false;
             break;
 
         case staDoorOpen:
+            Pass.Clear();
             break;
     } // switch(State)
-    return RetVal;
 }
 
 #if 1 // ======================= Command processing ============================
@@ -306,27 +322,27 @@ void App_t::OnCmd(Shell_t *PShell) {
 
     else if(PCmd->NameIs("Version")) PShell->Printf("%S %S\r", APP_NAME, BUILD_TIME);
 
-    else if(PCmd->NameIs("k")) Sound.Play("knock.wav");
-    else if(PCmd->NameIs("b")) SndList.PlayRandomFileFromDir("BadKey");
-    else if(PCmd->NameIs("c")) SndList.PlayRandomFileFromDir("Closing");
-    else if(PCmd->NameIs("g")) SndList.PlayRandomFileFromDir("GoodKey");
-    else if(PCmd->NameIs("r")) SndList.PlayRandomFileFromDir("Ready");
-    else if(PCmd->NameIs("t")) SndList.PlayRandomFileFromDir("TooManyTries");
+//    else if(PCmd->NameIs("k")) Sound.Play("knock.wav");
+//    else if(PCmd->NameIs("b")) SndList.PlayRandomFileFromDir("BadKey");
+//    else if(PCmd->NameIs("c")) SndList.PlayRandomFileFromDir("Closing");
+//    else if(PCmd->NameIs("g")) SndList.PlayRandomFileFromDir("GoodKey");
+//    else if(PCmd->NameIs("r")) SndList.PlayRandomFileFromDir("Ready");
+//    else if(PCmd->NameIs("t")) SndList.PlayRandomFileFromDir("TooManyTries");
 
-    else if(PCmd->NameIs("RGB")) {
-        Color_t Clr;
-        if(PCmd->GetParams<uint8_t>(3, &Clr.R, &Clr.G, &Clr.B) == retvOk) {
-            Effects.AllTogetherNow(Clr);
-        }
-        else PShell->Ack(retvCmdError);
-    }
-    else if(PCmd->NameIs("RGBs")) {
-        Color_t Clr;
-        if(PCmd->GetParams<uint8_t>(3, &Clr.R, &Clr.G, &Clr.B) == retvOk) {
-            Effects.AllTogetherSmoothly(Clr, 360);
-        }
-        else PShell->Ack(retvCmdError);
-    }
+//    else if(PCmd->NameIs("RGB")) {
+//        Color_t Clr;
+//        if(PCmd->GetParams<uint8_t>(3, &Clr.R, &Clr.G, &Clr.B) == retvOk) {
+//            Effects.AllTogetherNow(Clr);
+//        }
+//        else PShell->Ack(retvCmdError);
+//    }
+//    else if(PCmd->NameIs("RGBs")) {
+//        Color_t Clr;
+//        if(PCmd->GetParams<uint8_t>(3, &Clr.R, &Clr.G, &Clr.B) == retvOk) {
+//            Effects.AllTogetherSmoothly(Clr, 360);
+//        }
+//        else PShell->Ack(retvCmdError);
+//    }
 
     else PShell->Ack(retvCmdUnknown);
 }
