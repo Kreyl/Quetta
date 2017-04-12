@@ -233,7 +233,7 @@ enum TmrKLType_t {tktOneShot, tktPeriodic};
 class TmrKL_t : private IrqHandler_t {
 private:
     virtual_timer_t Tmr;
-    void StartI() { chVTSetI(&Tmr, Period, TmrKLCallback, this); }
+    void StartI() { chVTSetI(&Tmr, Period, TmrKLCallback, this); }  // Will be reset before start
     thread_t *PThread;
     systime_t Period;
     eventmask_t EvtMsk;
@@ -245,24 +245,23 @@ private:
 public:
     void InitAndStart(thread_t *APThread) {
         PThread = APThread;
-        Start();
+        StartOrRestart();
     }
     void InitAndStart() {
         PThread = chThdGetSelfX();
-        Start();
+        StartOrRestart();
     }
 
     void Init(thread_t *APThread) { PThread = APThread; }
     void Init() { PThread = chThdGetSelfX(); }
 
-    void Start() {
+    void StartOrRestart() {
         chSysLock();
         StartI();
         chSysUnlock();
     }
-    void Start(systime_t NewPeriod) {
+    void StartOrRestart(systime_t NewPeriod) {
         chSysLock();
-        chVTResetI(&Tmr);
         Period = NewPeriod;
         StartI();
         chSysUnlock();
@@ -273,10 +272,7 @@ public:
         chSysUnlock();
     }
     void Stop() { chVTReset(&Tmr); }
-    void Restart() {
-        chVTReset(&Tmr);
-        Start();
-    }
+
     TmrKL_t(systime_t APeriod, eventmask_t AEvtMsk, TmrKLType_t AType) :
         PThread(nullptr), Period(APeriod), EvtMsk(AEvtMsk), TmrType(AType) {}
     // Dummy period is set

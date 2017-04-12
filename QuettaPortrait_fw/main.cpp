@@ -22,41 +22,69 @@
 #if 1 // =========================== Locals ====================================
 App_t App;
 SndList_t SndList;
+enum State_t { staIdle, staEnteringPass, staTooManyTries, staDoorOpen };
+State_t State = staIdle;
+
+TmrKL_t TmrBtnPress(MS2ST(4005), EVT_PRESS_TIMEOUT, tktOneShot);
+
+TmrKL_t TmrDoorOpen(MS2ST(9000), EVT_DOOR_OPEN_END, tktOneShot);
+
+#define PASS_TRY_CNT                3
+TmrKL_t TmrTooManyTries(MS2ST(9000), EVT_TOOMANYTRIES_END, tktOneShot);
 
 //LedOnOff_t LedState(LED_PIN);
 
 #define PASS_LEN_MAX    8
+enum PassAppendRslt_t { parCorrect, parIncorrect, parEnterMore };
+
 class Pass_t {
 private:
-    uint32_t Len = 0;
-    uint8_t Seq[PASS_LEN_MAX];
+    uint32_t CorrectLen = 0, EnteredLen = 0;
+    uint8_t CorrectSeq[PASS_LEN_MAX];
+    uint8_t EnteredSeq[PASS_LEN_MAX];
 public:
-    uint8_t Append(uint8_t N) {
-        if(Len >= PASS_LEN_MAX) return retvOverflow;
-        else {
-            Seq[Len++] = N;
-            return retvOk;
-        }
-    }
-    void Clear() { Len = 0; }
-    bool IsEqual(Pass_t &APass) {
-        if(Len == APass.Len) {
-            for(uint32_t i=0; i<Len; i++) {
-                if(Seq[i] != APass.Seq[i]) return false;
+    PassAppendRslt_t Enter(uint8_t N) {
+        EnteredSeq[EnteredLen++] = N;
+        PassAppendRslt_t Rslt = parCorrect;
+        if(EnteredLen == CorrectLen) {
+            for(uint32_t i=0; i<CorrectLen; i++) {
+                if(EnteredSeq[i] != CorrectSeq[i]) {
+                    Rslt = parIncorrect;
+                    break;
+                }
             }
+            Clear();
+            return Rslt;
         }
-        else return false;
-        return true;
+        else return parEnterMore; // Lengths not equal
     }
-    void Print() {
-        Uart.Printf("Pass: ");
-        for(uint32_t i=0; i<Len; i++) Uart.Printf("%u ", Seq[i]);
+
+    uint8_t AppendCorrect(uint8_t N) {
+        if(CorrectLen >= PASS_LEN_MAX) return retvOverflow;
+        else CorrectSeq[CorrectLen++] = N;
+        return retvOk;
+    }
+
+    void Clear() { EnteredLen = 0; }
+    void ClearCorrect() { CorrectLen = 0; }
+
+    void PrintEntered() {
+        Uart.Printf("Entered: ");
+        for(uint32_t i=0; i<EnteredLen; i++) Uart.Printf("%u ", EnteredSeq[i]);
         Uart.Printf("\r");
     }
+    void PrintCorrect() {
+        Uart.Printf("Correct: ");
+        for(uint32_t i=0; i<CorrectLen; i++) Uart.Printf("%u ", CorrectSeq[i]);
+        Uart.Printf("\r");
+    }
+
+    uint8_t TryCnt;
 };
 
-Pass_t PassCorrect, PassEntered;
+Pass_t Pass;
 
+uint8_t BtnHandler(uint8_t BtnID);
 #endif
 
 int main() {
@@ -85,7 +113,7 @@ int main() {
     SD.Init();
 
     // Read pass
-    PassCorrect.Clear();
+    Pass.ClearCorrect();
     uint32_t Cnt;
     if(SD.iniRead<uint32_t>("config.ini", "Pass", "Count", &Cnt) == retvOk) {
 //        Uart.Printf("Count: %u\r", Cnt);
@@ -96,11 +124,11 @@ int main() {
             else KeyName[7] = 0;
             uint8_t Point;
             if(SD.iniRead<uint8_t>("config.ini", "Pass", KeyName, &Point) == retvOk) {
-                PassCorrect.Append(Point);
+                Pass.AppendCorrect(Point);
             }
             else break;
         }
-        PassCorrect.Print();
+        Pass.PrintCorrect();
     }
 
     // LEDs
@@ -114,6 +142,9 @@ int main() {
 
     // Sensors
     SimpleSensors::Init();
+    TmrBtnPress.Init();
+    TmrDoorOpen.Init();
+    TmrTooManyTries.Init();
 
 //    Adc.Init();
 //    Adc.EnableVRef();
@@ -129,6 +160,7 @@ int main() {
 
 __noreturn
 void App_t::ITask() {
+    uint8_t BtnID = 0;
     while(true) {
         uint32_t Evt = chEvtWaitAny(ALL_EVENTS);
 
@@ -165,10 +197,38 @@ void App_t::ITask() {
 
         if(Evt & EVT_BUTTONS) {
             BtnEvtInfo_t EInfo;
-            while(BtnGetEvt(&EInfo) == retvOk) {
-                Sound.Play("Knock.wav");
-
+            if(BtnGetEvt(&EInfo) == retvOk) {
+                uint8_t Retv = retvOk;
+                if(Sound.State != sndStopped and BtnID != 0) Retv = BtnHandler(BtnID);
+                if(Retv == retvOk) {
+                    Sound.Play("Knock.wav");
+                    BtnID = EInfo.BtnID+1;
+                    BtnHandler(EInfo.BtnID+1);
+                }
             }
+        }
+
+        if(Evt & EVT_PLAY_ENDS) {
+            if(BtnID != 0) {
+                BtnHandler(BtnID);
+                BtnID = 0;
+            }
+        }
+
+        if(Evt & EVT_PRESS_TIMEOUT) {
+            Uart.Printf("PressTO\r");
+            State = staIdle;
+            Pass.Clear();
+        }
+        if(Evt & EVT_DOOR_OPEN_END) {
+            Uart.Printf("DoorOpenTO\r");
+            SndList.PlayRandomFileFromDir("Closing");
+            State = staIdle;
+        }
+        if(Evt & EVT_TOOMANYTRIES_END) {
+            Uart.Printf("TriesTO\r");
+            //SndList.PlayRandomFileFromDir("Ready");
+            State = staIdle;
         }
 
         if(Evt & EVT_LED_DONE) {
@@ -180,6 +240,61 @@ void App_t::ITask() {
             Uart.SignalCmdProcessed();
         }
     } // while true
+}
+
+uint8_t BtnHandler(uint8_t BtnID) {
+    Uart.Printf("Sta %u; Btn %u\r", State, BtnID);
+    uint8_t RetVal = retvOk;
+    switch(State) {
+        case staIdle:
+            Pass.Clear();
+            State = staEnteringPass;
+            // No break here intentonally
+
+        case staEnteringPass: {
+            PassAppendRslt_t Rslt = Pass.Enter(BtnID);
+            switch(Rslt) {
+                case parCorrect:
+                    TmrBtnPress.Stop();
+                    TmrTooManyTries.Stop();
+                    Pass.TryCnt = 0;
+                    TmrDoorOpen.StartOrRestart();
+                    SndList.PlayRandomFileFromDir("GoodKey");
+                    State = staDoorOpen;
+                    RetVal = retvBusy;
+                    break;
+
+                case parIncorrect:
+                    TmrBtnPress.Stop();
+                    TmrTooManyTries.StartOrRestart();   // Always reset try cnt after a while
+                    Pass.TryCnt++;
+                    if(Pass.TryCnt < PASS_TRY_CNT) {
+                        SndList.PlayRandomFileFromDir("BadKey");
+                        State = staIdle;
+                        RetVal = retvBusy;
+                    }
+                    else { // too many tries
+                        SndList.PlayRandomFileFromDir("TooManyTries");
+                        State = staTooManyTries;
+                        RetVal = retvBusy;
+                    }
+                    break;
+
+                case parEnterMore:
+                    TmrBtnPress.StartOrRestart();
+                    break;
+            } // switch rslt
+        } break;
+
+        case staTooManyTries:
+            SndList.PlayRandomFileFromDir("TooManyTries");
+            RetVal = retvBusy;
+            break;
+
+        case staDoorOpen:
+            break;
+    } // switch(State)
+    return RetVal;
 }
 
 #if 1 // ======================= Command processing ============================
