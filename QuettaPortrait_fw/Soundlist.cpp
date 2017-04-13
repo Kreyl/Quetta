@@ -32,22 +32,26 @@ FRESULT SndList_t::CountFilesInDir(const char* DirName, uint32_t *PCnt) {
 }
 
 void SndList_t::PlayRandomFileFromDir(const char* DirName) {
-    uint32_t Cnt=0;
-    FRESULT Rslt = CountFilesInDir(DirName, &Cnt);
-    if(Rslt != FR_OK or Cnt == 0) return;       // Get out if nothing to play
-//    Uart.Printf("\rR=%u; Cnt=%u", Rslt, Cnt);
-    // Select number of file
-    uint32_t N = 0;
-    if(Cnt > 1) {   // Get random number if count > 1
-        do {
-            N = Random(0, Cnt-1);      // [0; Cnt-1]
-        } while(N == PreviousN);    // skip same as previous
+    int indx = DirIndxInList(DirName);
+    if(indx == -1) {
+        indx = AddDirToList(DirName);
+        FRESULT Rslt = CountFilesInDir(DirName, &DirList[indx].FilesCnt);
+        if(Rslt != FR_OK) return;
     }
-//    Uart.Printf("; Random=%u", N);
-    PreviousN = N;
+//    DirList[indx].Print();
+    if(DirList[indx].FilesCnt == 0) return; // Get out if nothing to play
+    // Select number of file
+    int32_t N = 0;
+    if(DirList[indx].FilesCnt > 1) {   // Get random number if count > 1
+        do {
+            N = Random(0, DirList[indx].FilesCnt-1);      // [0; Cnt-1]
+        } while(N == DirList[indx].LastN);    // skip same as previous
+    }
+//    Uart.Printf("Random=%d\r", N);
+    DirList[indx].LastN = N;
     // Iterate files in dir until success
-    uint32_t Counter = 0;
-    Rslt = f_opendir(&Dir, DirName);
+    int32_t Counter = 0;
+    FRESULT Rslt = f_opendir(&Dir, DirName);
     if(Rslt != FR_OK) return;
     while(true) {
         Rslt = f_readdir(&Dir, &FileInfo);
@@ -69,7 +73,7 @@ void SndList_t::PlayRandomFileFromDir(const char* DirName) {
                             Filename[Len] = '/';
                         }
                         strcpy(&Filename[Len+1], FName);
-                        Uart.Printf("%S  Cnt=%u\r", FName, Counter);
+                        Uart.Printf("%S  N=%u\r", FName, Counter);
                         Sound.Play(Filename);
                         return;
                     }
@@ -80,5 +84,22 @@ void SndList_t::PlayRandomFileFromDir(const char* DirName) {
     } // while true
 }
 
+int SndList_t::DirIndxInList(const char* DirName) {
+    for(int i=0; i < DIR_CNT_MAX; i++) {
+        if(strcasecmp(DirList[i].DirName, DirName) == 0) return i;  // found
+    }
+    return -1; // No such dir
+}
 
-
+int SndList_t::AddDirToList(const char* DirName) {
+    // Iterate all dirs except last one
+    int indx=0;
+    for(indx=0; indx < (DIR_CNT_MAX-1); indx++) {
+        if(DirList[indx].DirName[0] == '\0') break;    // Empty dir
+    }
+    Uart.Printf("Indx=%d\r", indx);
+    strcpy(DirList[indx].DirName, DirName);
+    DirList[indx].LastN = -1;
+    DirList[indx].FilesCnt = 0;
+    return indx;
+}

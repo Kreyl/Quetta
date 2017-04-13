@@ -88,6 +88,7 @@ public:
 Pass_t Pass;
 bool MustKnock = true;
 bool SpeakTooManyTriesEnd = false;
+uint8_t LedSeq = 0;
 
 void BtnHandler();
 void ReadCfg();
@@ -187,8 +188,9 @@ void App_t::ITask() {
 #endif
 
         if(Evt & EVT_BUTTONS) {
+            TmrBtnPress.Stop();
             BtnEvtInfo_t EInfo;
-            if(BtnGetEvt(&EInfo) == retvOk and MustKnock) {
+            if(BtnGetEvt(&EInfo) == retvOk and MustKnock and (State != staDoorOpen)) {
                 SndList.PlayRandomFileFromDir("Knock");
                 Pass.Enter(EInfo.BtnID+1);
                 MustCheck = true;
@@ -205,7 +207,7 @@ void App_t::ITask() {
 
         if(Evt & EVT_PRESS_TIMEOUT) {
             Uart.Printf("PressTO\r");
-            Effects.AllTogetherSmoothly(clDarkBlue, 360);
+            Effects.AllTogetherSmoothly(clRed, 360);
             State = staIdle;
             Pass.Clear();
         }
@@ -213,6 +215,7 @@ void App_t::ITask() {
             Uart.Printf("DoorOpenTO\r");
             MustKnock = false;
             SndList.PlayRandomFileFromDir("Closing");
+            Effects.AllTogetherSmoothly(clGreen, 360);
             State = staIdle;
             Pass.Clear();
         }
@@ -228,7 +231,15 @@ void App_t::ITask() {
         }
 
         if(Evt & EVT_LED_DONE) {
-            if(!Effects.AreOff()) Effects.AllTogetherSmoothly(clBlack, 630);
+            if(State == staDoorOpen) {
+                if(LedSeq == 0) {
+                    LedSeq = 1;
+                    Effects.AllTogetherSmoothly((Color_t){0, 4, 0}, 1008);
+                }
+            }
+            else {
+                if(!Effects.AreOff()) Effects.AllTogetherSmoothly(clBlack, 630);
+            }
         }
 
         if(Evt & EVT_UART_NEW_CMD) {
@@ -250,19 +261,18 @@ void BtnHandler() {
             PassAppendRslt_t Rslt = Pass.Check();
             switch(Rslt) {
                 case parCorrect:
-                    TmrBtnPress.Stop();
                     TmrTooManyTries.Stop();
                     Pass.TryCnt = 0;
                     Pass.Clear();
                     TmrDoorOpen.StartOrRestart();
                     SndList.PlayRandomFileFromDir("GoodKey");
+                    LedSeq = 0;
                     Effects.AllTogetherSmoothly(clGreen, 360);
                     MustKnock = false;
                     State = staDoorOpen;
                     break;
 
                 case parIncorrect:
-                    TmrBtnPress.Stop();
                     TmrTooManyTries.StartOrRestart();   // Always reset try cnt after a while
                     Pass.TryCnt++;
                     Pass.Clear();
@@ -276,6 +286,7 @@ void BtnHandler() {
                     else { // too many tries
                         SpeakTooManyTriesEnd = true;
                         SndList.PlayRandomFileFromDir("TooManyTries");
+                        Effects.AllTogetherSmoothly(clRed, 360);
                         MustKnock = false;
                         State = staTooManyTries;
                     }

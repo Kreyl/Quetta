@@ -307,6 +307,7 @@ void Effects_t::AllTogetherNow(Color_t Color) {
 
 void Effects_t::AllTogetherSmoothly(Color_t Color, uint32_t ASmoothValue) {
 //    Uart.Printf("%S\r", __FUNCTION__);
+//    Color.Print();
     if(ASmoothValue == 0) AllTogetherNow(Color);
     else {
         chSysLock();
