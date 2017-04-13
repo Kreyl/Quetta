@@ -19,7 +19,7 @@
 #endif
 
 #if SIMPLESENSORS_ENABLED
-#define SNS_POLL_PERIOD_MS      54
+#define SNS_POLL_PERIOD_MS      81
 
 // Button handler
 extern void ProcessButtons(PinSnsState_t *PState, uint32_t Len);

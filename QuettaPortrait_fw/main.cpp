@@ -25,7 +25,7 @@ SndList_t SndList;
 enum State_t { staIdle, staEnteringPass, staTooManyTries, staDoorOpen };
 State_t State = staIdle;
 
-TmrKL_t TmrBtnPress(MS2ST(4005), EVT_PRESS_TIMEOUT, tktOneShot);
+TmrKL_t TmrBtnPress(MS2ST(7002), EVT_PRESS_TIMEOUT, tktOneShot);
 
 TmrKL_t TmrDoorOpen(MS2ST(9000), EVT_DOOR_OPEN_END, tktOneShot);
 
@@ -90,6 +90,7 @@ bool MustKnock = true;
 bool SpeakTooManyTriesEnd = false;
 
 void BtnHandler();
+void ReadCfg();
 #endif
 
 int main() {
@@ -115,26 +116,11 @@ int main() {
     Uart.Printf("\r%S %S\r\n", APP_NAME, BUILD_TIME);
     Clk.PrintFreqs();
 
+    chThdSleepMilliseconds(450);
+
     SD.Init();
 
-    // Read pass
-    Pass.ClearCorrect();
-    uint32_t Cnt;
-    if(SD.iniRead<uint32_t>("config.ini", "Pass", "Count", &Cnt) == retvOk) {
-//        Uart.Printf("Count: %u\r", Cnt);
-        for(u32 i=1; i<=Cnt; i++) {
-            char KeyName[9] = "Point";
-            itoa(i, &KeyName[5], 10);
-            if(i < 10) KeyName[6] = 0;
-            else KeyName[7] = 0;
-            uint8_t Point;
-            if(SD.iniRead<uint8_t>("config.ini", "Pass", KeyName, &Point) == retvOk) {
-                Pass.AppendCorrect(Point);
-            }
-            else break;
-        }
-        Pass.PrintCorrect();
-    }
+    ReadCfg();
 
     // LEDs
     Effects.Init();
@@ -203,7 +189,7 @@ void App_t::ITask() {
         if(Evt & EVT_BUTTONS) {
             BtnEvtInfo_t EInfo;
             if(BtnGetEvt(&EInfo) == retvOk and MustKnock) {
-                Sound.Play("knock.wav");
+                SndList.PlayRandomFileFromDir("Knock");
                 Pass.Enter(EInfo.BtnID+1);
                 MustCheck = true;
             }
@@ -313,6 +299,35 @@ void BtnHandler() {
     } // switch(State)
 }
 
+void ReadCfg() {
+    uint32_t dw32;
+    // Read pass
+    Pass.ClearCorrect();
+    if(SD.iniRead<uint32_t>("config.ini", "Pass", "Count", &dw32) == retvOk) {
+//        Uart.Printf("Count: %u\r", Cnt);
+        for(u32 i=1; i<=dw32; i++) {
+            char KeyName[9] = "Point";
+            itoa(i, &KeyName[5], 10);
+            if(i < 10) KeyName[6] = 0;
+            else KeyName[7] = 0;
+            uint8_t Point;
+            if(SD.iniRead<uint8_t>("config.ini", "Pass", KeyName, &Point) == retvOk) {
+                Pass.AppendCorrect(Point);
+            }
+            else break;
+        }
+        Pass.PrintCorrect();
+    }
+
+    // Read timings
+    if(SD.iniRead<uint32_t>("config.ini", "Timings", "DoorOpen_s", &dw32) == retvOk) {
+        TmrDoorOpen.SetNewPeriod_s(dw32);
+    }
+    if(SD.iniRead<uint32_t>("config.ini", "Timings", "TooManyTries_s", &dw32) == retvOk) {
+        TmrTooManyTries.SetNewPeriod_s(dw32);
+    }
+}
+
 #if 1 // ======================= Command processing ============================
 void App_t::OnCmd(Shell_t *PShell) {
     Cmd_t *PCmd = &PShell->Cmd;
@@ -322,27 +337,27 @@ void App_t::OnCmd(Shell_t *PShell) {
 
     else if(PCmd->NameIs("Version")) PShell->Printf("%S %S\r", APP_NAME, BUILD_TIME);
 
-//    else if(PCmd->NameIs("k")) Sound.Play("knock.wav");
-//    else if(PCmd->NameIs("b")) SndList.PlayRandomFileFromDir("BadKey");
-//    else if(PCmd->NameIs("c")) SndList.PlayRandomFileFromDir("Closing");
-//    else if(PCmd->NameIs("g")) SndList.PlayRandomFileFromDir("GoodKey");
-//    else if(PCmd->NameIs("r")) SndList.PlayRandomFileFromDir("Ready");
-//    else if(PCmd->NameIs("t")) SndList.PlayRandomFileFromDir("TooManyTries");
+    else if(PCmd->NameIs("k")) SndList.PlayRandomFileFromDir("Knock");
+    else if(PCmd->NameIs("b")) SndList.PlayRandomFileFromDir("BadKey");
+    else if(PCmd->NameIs("c")) SndList.PlayRandomFileFromDir("Closing");
+    else if(PCmd->NameIs("g")) SndList.PlayRandomFileFromDir("GoodKey");
+    else if(PCmd->NameIs("r")) SndList.PlayRandomFileFromDir("Ready");
+    else if(PCmd->NameIs("t")) SndList.PlayRandomFileFromDir("TooManyTries");
 
-//    else if(PCmd->NameIs("RGB")) {
-//        Color_t Clr;
-//        if(PCmd->GetParams<uint8_t>(3, &Clr.R, &Clr.G, &Clr.B) == retvOk) {
-//            Effects.AllTogetherNow(Clr);
-//        }
-//        else PShell->Ack(retvCmdError);
-//    }
-//    else if(PCmd->NameIs("RGBs")) {
-//        Color_t Clr;
-//        if(PCmd->GetParams<uint8_t>(3, &Clr.R, &Clr.G, &Clr.B) == retvOk) {
-//            Effects.AllTogetherSmoothly(Clr, 360);
-//        }
-//        else PShell->Ack(retvCmdError);
-//    }
+    else if(PCmd->NameIs("RGB")) {
+        Color_t Clr;
+        if(PCmd->GetParams<uint8_t>(3, &Clr.R, &Clr.G, &Clr.B) == retvOk) {
+            Effects.AllTogetherNow(Clr);
+        }
+        else PShell->Ack(retvCmdError);
+    }
+    else if(PCmd->NameIs("RGBs")) {
+        Color_t Clr;
+        if(PCmd->GetParams<uint8_t>(3, &Clr.R, &Clr.G, &Clr.B) == retvOk) {
+            Effects.AllTogetherSmoothly(Clr, 360);
+        }
+        else PShell->Ack(retvCmdError);
+    }
 
     else PShell->Ack(retvCmdUnknown);
 }

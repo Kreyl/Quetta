@@ -21,7 +21,7 @@
 #include "color.h"
 #include "uart.h"
 
-#define LED_CNT             27   // Number of WS2812 LEDs
+#define LED_CNT             45 // Number of WS2812 LEDs
 
 #define SEQ_LEN             8
 #define RST_W_CNT           2 // zero words after data to produce reset

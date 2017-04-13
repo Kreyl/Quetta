@@ -57,7 +57,6 @@ void SndList_t::PlayRandomFileFromDir(const char* DirName) {
             if(FileInfo.fattrib & (AM_HID | AM_DIR)) continue; // Ignore hidden files and dirs
             // Check if wav or mp3
             char *FName = (FileInfo.lfname[0] == 0)? FileInfo.fname : FileInfo.lfname;
-//                Uart.Printf("\r%S  Cnt=%u", FName, Counter);
             uint32_t Len = strlen(FName);
             if(Len > 4) {
                 if((strcasecmp(&FName[Len-3], "mp3") == 0) or (strcasecmp(&FName[Len-3], "wav") == 0)) {
@@ -70,6 +69,7 @@ void SndList_t::PlayRandomFileFromDir(const char* DirName) {
                             Filename[Len] = '/';
                         }
                         strcpy(&Filename[Len+1], FName);
+                        Uart.Printf("%S  Cnt=%u\r", FName, Counter);
                         Sound.Play(Filename);
                         return;
                     }
