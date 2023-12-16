@@ -1,3 +1,0 @@
-(sym_lib_table
-  (lib (name "Quetta-rescue")(type "Legacy")(uri "${KIPRJMOD}/Quetta-rescue.lib")(options "")(descr ""))
-)
