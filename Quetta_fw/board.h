@@ -52,7 +52,7 @@
 #define USB_DETECT_PIN  GPIOA, 2 // WKUP4
 
 // LEDs
-#define LED_PIN        GPIOB, 0, omPushPull
+#define LED_PIN         { GPIOB, 0, TIM3, 3, invNotInverted, omPushPull, 255 }
 
 // Audio
 #define AU_SAI          SAI1

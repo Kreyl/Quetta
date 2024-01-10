@@ -10,24 +10,40 @@
 
 #include "ChunkTypes.h"
 
-const BaseChunk_t lsqStart[] = {
-        {csSetup, 1},
-        {csWait, 360},
-        {csSetup, 0},
-        {csWait, 360},
-        {csGoto, 0},
-};
+#define LED_TOP_BRIGHTNESS  255
 
-const BaseChunk_t lsqUsbReady[] = {
-        {csSetup, 1},
-        {csEnd},
-};
-
-const BaseChunk_t lsqCmd[] = {
-        {csSetup, 1},
-        {csWait, 135},
-        {csSetup, 0},
+const LedSmoothChunk_t lsqOk[] = {
+        {csSetup, 207, LED_TOP_BRIGHTNESS},
+        {csSetup, 207, 4},
         {csEnd}
 };
+
+const LedSmoothChunk_t lsqFail[] = {
+        {csSetup, 0, LED_TOP_BRIGHTNESS},
+        {csWait, 45},
+        {csSetup, 0, 0},
+        {csWait, 45},
+        {csGoto, 0}
+};
+
+
+
+const LedSmoothChunk_t lsqCharging[] = {
+        {csSetup, 360, LED_TOP_BRIGHTNESS},
+        {csSetup, 360, 4},
+        {csGoto, 0}
+};
+
+const LedSmoothChunk_t lsqNotCharging[] = {
+        {csSetup, 360, LED_TOP_BRIGHTNESS},
+        {csEnd}
+};
+
+const LedSmoothChunk_t lsqOff[] = {
+        {csSetup, 207, LED_TOP_BRIGHTNESS},
+        {csSetup, 0, 0},
+        {csEnd}
+};
+
 
 #endif //SEQUENCES_H__

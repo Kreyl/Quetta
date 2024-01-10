@@ -653,8 +653,6 @@ enum PinPullUpDown_t {
     pudPullDown = 0b10
 };
 
-enum PinInputState_t {pssNone, pssLo, pssHi, pssRising, pssFalling};
-
 struct PinInputSetup_t {
     GPIO_TypeDef *PGpio;
     uint16_t Pin;

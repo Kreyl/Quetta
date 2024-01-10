@@ -10,7 +10,6 @@
 #include "max98357.h"
 #include "AuPlayer.h"
 #include "usb_msd.h"
-#include "SimpleSensors.h"
 
 #if 1 // ======================== Variables & prototypes =======================
 // Forever
@@ -22,10 +21,103 @@ const char* AppVersion = XSTRINGIFY(BUILD_TIME);
 
 static const UartParams_t CmdUartParams(115200, CMD_UART_PARAMS);
 CmdUart_t Uart{CmdUartParams};
-LedBlinker_t Lumos{LED_PIN};
-
 PinOutput_t PinAuPwrEn(AU_PWREN);
+#endif
 
+#if 1 // ================== Charge, Usb, Battery, Led ==========================
+#define BATTERY_LOW_mv  3500
+#define BATTERY_DEAD_mv 3200
+void OnAdcDoneI();
+
+//const AdcSetup_t AdcSetup = {
+//        .VRefBufVoltage = vrefBufDisabled,
+//        .SampleTime = ast92d5Cycles,
+//        .Oversampling = AdcSetup_t::oversmp128,
+//        .DoneCallbackI = OnAdcDoneI,
+//        .Channels = {
+//                {BAT_ADC_PIN},
+//                {nullptr, 0, ADC_VREFINT_CHNL}
+//        }
+//};
+
+class ChargeUsbLed_t {
+private:
+    LedSmooth_t Led{LED_PIN};
+    bool PinUsbIsHi = false, PinIsChargingWasHi = true;
+    uint32_t AutoOffTimeoutSStart = (48UL * 3600UL), AutoOffTimeLeft = AutoOffTimeoutSStart;
+public:
+    void Init() {
+        Led.Init();
+        PinSetupInput(IS_CHARGING_PIN, pudPullUp);
+        PinSetupInput(USB_DETECT_PIN, pudPullDown);
+        // Battery measurement
+//        PinSetupOut(BAT_MEAS_EN, omOpenDrain);
+//        PinSetLo(BAT_MEAS_EN); // Enable it forever, as 200k produces ignorable current
+        // Inner ADC
+//        InnAdc.Init(AdcSetup);
+//        InnAdc.StartPeriodicMeasurement(1);
+    }
+
+//    void SetAutoOffTime(uint32_t AutoOffTimeH) {
+//        AutoOffTimeoutSStart = AutoOffTimeH * 3600UL; // Hours to seconds
+//        AutoOffTimeLeft = AutoOffTimeoutSStart;
+//    }
+
+    void OnSecond(uint32_t VBatRaw, uint32_t VRefRaw) {
+        // Check if time to sleep
+        /*
+        if(AutoOffTimeLeft == 0) {
+            Printf("Auto Off\r");
+            EnterSleep();
+            return;
+        }
+        else AutoOffTimeLeft--;
+        */
+        // If USB disconnected, check battery and SD
+        if(PinIsLo(USB_DETECT_PIN)) {
+            if(PinUsbIsHi) { // Just disconnected
+                PinUsbIsHi = false;
+                EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUsbDisconnect));
+                Led.StartOrContinue(lsqOk);
+            }
+            // Check SD
+            if(!SD.IsReady) {
+                if(SD.Reconnect() == retvOk) Led.StartOrRestart(lsqOk);
+                else Led.StartOrContinue(lsqFail);
+            }
+            // Check battery
+            /*
+            uint32_t Battery_mV = 2 * InnAdc.Adc2mV(VBatRaw, VRefRaw); // *2 because of resistor divider
+//            Printf("%u\r", Battery_mV);
+            if(Battery_mV < BATTERY_DEAD_mv) {
+                Printf("Discharged: %u\r", Battery_mV);
+                EnterSleep();
+            }
+            */
+        }
+        // If USB connected, check charging status
+        else if(PinIsHi(USB_DETECT_PIN)) {
+            if(!PinUsbIsHi) { // Just connected
+                PinUsbIsHi = true;
+                EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUsbConnect));
+            }
+            // Check IsCharging
+            if(PinIsLo(IS_CHARGING_PIN)) {
+                PinIsChargingWasHi = false;
+                Led.StartOrContinue(lsqCharging);
+            }
+            else { // Is hi => no charging
+                if(!PinIsChargingWasHi) { // Just stopped
+                    Led.StartOrRestart(lsqOk);
+                    PinIsChargingWasHi = true;
+                }
+            }
+        } // if USB is hi
+    }
+
+    void IndicateOk()   { Led.StartOrRestart(lsqOk); }
+    void IndicateFail() { Led.StartOrRestart(lsqFail); }
+} ChargeUsbLed;
 #endif
 
 int main(void) {
@@ -83,39 +175,33 @@ int main(void) {
 
 //    FwUpdater::PrintCurrBank();
 #endif
-
-    // Leds
-    Lumos.Init();
-    Lumos.StartOrRestart(lsqStart);
-
     PinAuPwrEn.InitAndSetHi();
+    ChargeUsbLed.Init();
     Codec.Init();
     AuPlayer.Init();
 
     SD.Init();
     if(SD.IsReady) {
 //        FwUpdater::CheckAndTryToUpdate();
-//        uint32_t Volume, AutoOffTimeH;
-//        if(ini::Read<uint32_t>("Settings.ini", "Common", "Volume", &Volume) != retvOk) Volume = 100;
-//        if(Volume > VOLUME_MAX) Volume = VOLUME_MAX;
+        uint32_t Volume, AutoOffTimeH;
+        if(ini::Read<uint32_t>("Settings.ini", "Sound", "Volume", &Volume) != retvOk) Volume = 100;
+        if(Volume > VOLUME_MAX) Volume = VOLUME_MAX;
 //        if(ini::Read<uint32_t>("Settings.ini", "Common", "AutoOffTimeH", &AutoOffTimeH) != retvOk) AutoOffTimeH = 48;
 //        if(AutoOffTimeH == 0) AutoOffTimeH = 1;
 //        else if(AutoOffTimeH > 1000000) AutoOffTimeH = 1000000;
 //        ChargeUsbLed.SetAutoOffTime(AutoOffTimeH);
-//        Printf("Volume: %u; AutoOffTime: %u\r", Volume, AutoOffTimeH);
-//        AuPlayer.Volume = Volume;
+        Printf("Volume: %u; AutoOffTime: %u\r", Volume, AutoOffTimeH);
+        AuPlayer.Volume = Volume;
 //        ChargeUsbLed.IndicateOk();
         UsbMsd.Init();
 //        SoundControl.PlayWakeupIntro();
         chThdSleepMilliseconds(99); // Allow it to start
     } // if SD is ready
     else {
-//        ChargeUsbLed.IndicateFail();
+        ChargeUsbLed.IndicateFail();
         chThdSleepMilliseconds(3600);
 //        EnterSleep();
     }
-
-    // USB
 
     // Main cycle
     ITask();
@@ -128,7 +214,6 @@ void ITask() {
         switch(Msg.ID) {
             case evtIdShellCmdRcvd:
                 while(((CmdUart_t*)Msg.Ptr)->TryParseRxBuff() == retvOk) OnCmd((Shell_t*)((CmdUart_t*)Msg.Ptr));
-                Lumos.StartOrRestart(lsqCmd);
                 break;
 
             case evtIdAudioPlayStop:
@@ -156,7 +241,6 @@ void ITask() {
 //                FwUpdater::CheckAndTryToUpdate();
                 break;
             case evtIdUsbReady:
-                Lumos.StartOrRestart(lsqUsbReady);
                 Printf("USB ready\r");
                 break;
 #endif
