@@ -31,6 +31,13 @@
 #define _CHIBIOS_RT_CONF_
 #define _CHIBIOS_RT_CONF_VER_6_0_
 
+#ifndef _FROM_ASM_
+#ifdef __cplusplus
+extern "C"
+#endif
+void PrintfC(const char *format, ...);
+#endif
+
 /*===========================================================================*/
 /**
  * @name System timers settings
@@ -690,9 +697,14 @@
  * @details This hook is invoked in case to a system halting error before
  *          the system is halted.
  */
+#ifdef _FROM_ASM_
+#define CH_CFG_SYSTEM_HALT_HOOK(reason) { }
+#else
 #define CH_CFG_SYSTEM_HALT_HOOK(reason) {                                   \
   /* System halt code here.*/                                               \
+  PrintfC("Halt\r\n"); \
 }
+#endif
 
 /**
  * @brief   Trace hook.

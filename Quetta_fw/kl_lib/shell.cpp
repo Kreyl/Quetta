@@ -5,10 +5,8 @@
  *      Author: Kreyl
  */
 
-#include "uart2.h"
+#include <uart.h>
 #include "shell.h"
-#include "color.h"
-#include "kl_string.h"
 
 extern CmdUart_t Uart;
 
@@ -154,7 +152,7 @@ void PrintfHelper_t::IVsPrintf(const char *format, va_list args) {
             case 's':
             case 'S': {
                 char *s = va_arg(args, char*);
-                width -= kl_strlen(s); // Do padding of string
+                width -= strlen(s); // Do padding of string
                 while(s and *s)    { if(IPutChar(*s++)   != retvOk) goto End; }
                 while(width-- > 0) { if(IPutChar(filler) != retvOk) goto End; } // Do padding of string
             }

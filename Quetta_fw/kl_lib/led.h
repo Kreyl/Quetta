@@ -8,11 +8,11 @@
 #ifndef LED_H__
 #define LED_H__
 
-//#include "hal.h"
-//#include "color.h"
+#include "hal.h"
+#include "color.h"
 #include "ChunkTypes.h"
-//#include "uart2.h"
-//#include "kl_lib.h"
+#include "uart.h"
+#include "kl_lib.h"
 
 #if 1 // ==================== LED on/off, no sequences =========================
 class LedOnOff_t {
@@ -326,4 +326,4 @@ public:
 };
 #endif
 
-#endif //LED_H__
+#endif // LED_H__

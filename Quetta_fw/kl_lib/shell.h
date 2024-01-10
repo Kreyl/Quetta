@@ -5,19 +5,14 @@
  *      Author: Kreyl
  */
 
-#ifndef SHELL_H__
-#define SHELL_H__
+#pragma once
 
-//#include <cstring>
+#include <cstring>
 #include <stdarg.h>
-#include "kl_string.h"
-#ifdef STM32G070xx
-#include "kl_libG070.h"
-#else
 #include "kl_lib.h"
-#endif
 #include "board.h"
-#include "ch.h"
+#include "color.h"
+#include "kl_string.h"
 
 #define DELIMITERS              " ,"
 #define PREV_CHAR_TIMEOUT_ms    99UL
@@ -222,6 +217,20 @@ public:
         return retvOk;
     }
 
+    uint8_t GetClrRGB(Color_t *PClr) {
+        if(GetNext<uint8_t>(&PClr->R) != retvOk) return retvFail;
+        if(GetNext<uint8_t>(&PClr->G) != retvOk) return retvFail;
+        if(GetNext<uint8_t>(&PClr->B) != retvOk) return retvFail;
+        return retvOk;
+    }
+
+    uint8_t GetClrHSV(ColorHSV_t *PClr) {
+        if(GetNext<uint16_t>(&PClr->H) != retvOk) return retvFail;
+        if(GetNext<uint8_t>(&PClr->S) != retvOk) return retvFail;
+        if(GetNext<uint8_t>(&PClr->V) != retvOk) return retvFail;
+        return retvOk;
+    }
+
     /*  int32_t Indx, Value;
         if(PCmd->GetParams<int32_t>(2, &Indx, &Value) == retvOk) {...}
         else PShell->Ack(retvCmdError);    */
@@ -251,12 +260,10 @@ class Shell_t {
 public:
 	Cmd_t Cmd;
 	virtual void Print(const char *format, ...) = 0;
-	virtual uint8_t ReceiveBinaryToBuf(uint8_t *ptr, uint32_t Len, uint32_t Timeout_ms) = 0;
 //	void Reply(const char* CmdCode, int32_t Data) { Print("%S,%d\r\n", CmdCode, Data); }
 //	void Ack(int32_t Result) { Print("Ack %d\r\n", Result); }
     void Ok()  { Print("Ok\r\n"); }
-    void OkWReason(const char* Reason = "")  { Print("Ok %S\r\n", Reason); }
-    void BadParam(const char* Reason = "") { Print("BadParam %S\r\n", Reason); }
+    void BadParam() { Print("BadParam\r\n"); }
     void CRCError() { Print("CRCError\r\n"); }
     void CmdError() { Print("CmdError\r\n"); }
     void CmdUnknown() { Print("CmdUnknown\r\n"); }
@@ -264,6 +271,8 @@ public:
     void Timeout() { Print("Timeout\r\n"); }
     void NoAnswer() { Print("NoAnswer\r\n"); }
     void EOL() { Print("\r\n"); }
+	virtual uint8_t ReceiveBinaryToBuf(uint8_t *ptr, uint32_t Len, uint32_t Timeout_ms) = 0;
+	virtual uint8_t TransmitBinaryFromBuf(uint8_t *ptr, uint32_t Len, uint32_t Timeout_ms) = 0;
 };
 
 
@@ -373,5 +382,3 @@ extern "C" {
 void PrintfC(const char *format, ...);
 //void PrintfCNow(const char *format, ...);
 }
-
-#endif //  SHELL_H__

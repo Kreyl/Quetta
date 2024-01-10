@@ -60,4 +60,3 @@ int kl_strlen(const char* s) {
     for(fs = s; *fs; ++fs);
     return (fs - s);
 }
-

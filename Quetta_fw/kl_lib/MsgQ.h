@@ -5,9 +5,10 @@
  *      Author: Kreyl
  */
 
-#ifndef MSGQ_H__
-#define MSGQ_H__
+#ifndef MSDQ_H_
+#define MSDQ_H_
 
+#include <inttypes.h>
 #include "ch.h"
 #include "kl_lib.h"
 #include "EvtMsgIDs.h"
@@ -176,4 +177,4 @@ public:
  */
 extern EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> EvtQMain;
 
-#endif
+#endif // MSDQ_H_

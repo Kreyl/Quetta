@@ -5,13 +5,14 @@
  *      Author: Kreyl
  */
 
-#ifndef COLOR_H__
-#define COLOR_H__
+#pragma once
 
-#include <inttypes.h>
-//#include <sys/cdefs.h>
-//#include "shell.h"
-//#include <stdlib.h> // for random
+#include "kl_lib.h"
+#include "inttypes.h"
+#include <sys/cdefs.h>
+#include <stdlib.h> // for random
+
+void Printf(const char *format, ...);
 
 struct ColorHSV_t;
 
@@ -314,12 +315,49 @@ struct ColorHSV_t {
     };
 
     void Adjust(const ColorHSV_t &Target) {
-        if     (H < Target.H) H++;
-        else if(H > Target.H) H--;
-        if     (S < Target.S) S++;
+        int16_t dH = Target.H - H;
+        uint16_t sH = ABS(dH);
+        if (sH > 180) sH = 360 - sH;
+        // Change H
+        if      ((0<dH and dH<=180) or -180>dH) {
+            if (H >= 360-1) H = 0;
+            else H++;
+        }
+        else if ((0>dH and dH>=-180) or 180<dH) {
+            if (H == 0) H = 360-1;
+            else H--;
+        }
+        // Change S
+        if     (S < Target.S and sH <= Target.S-S) S++;
         else if(S > Target.S) S--;
-        if     (V < Target.V) V++;
+        // Change V
+        if     (V < Target.V and sH <= Target.V-V) V++;
         else if(V > Target.V) V--;
+//        Printf(" Adjust dH %i (%u %u)\t sH %u\t sS %i (%u %u)\t sV %i (%u %u)\r", dH, H, Target.H, sH, Target.S-S, S, Target.S, Target.V-V, V, Target.V);
+    }
+
+    // Weight = 0: result is Back; Weight = 255: result is Fore; otherwise result is mix
+    void MixwWeight(const ColorHSV_t &Fore, const ColorHSV_t &Back, uint32_t Weight) {
+        uint8_t R, G, B;
+        uint8_t ForeR, ForeG, ForeB;
+        uint8_t BackR, BackG, BackB;
+        Fore.ToRGB(&ForeR, &ForeG, &ForeB);
+        Back.ToRGB(&BackR, &BackG, &BackB);
+        R = ClrMix(ForeR, BackR, Weight);
+        G = ClrMix(ForeG, BackG, Weight);
+        B = ClrMix(ForeB, BackB, Weight);
+        FromRGB(R, G, B);
+    }
+    // Weight = 0: not changed; Weight = 255: result is Fore; otherwise result is mix
+    void MixwWeight(const ColorHSV_t &Fore, uint32_t Weight) {
+        uint8_t R, G, B;
+        uint8_t ForeR, ForeG, ForeB;
+        ToRGB(&R, &G, &B);
+        Fore.ToRGB(&ForeR, &ForeG, &ForeB);
+        R = ClrMix(ForeR, R, Weight);
+        G = ClrMix(ForeG, G, Weight);
+        B = ClrMix(ForeB, B, Weight);
+        FromRGB(R, G, B);
     }
 
     uint32_t DelayToNextAdj(const ColorHSV_t &Target, uint32_t SmoothValue) {
@@ -330,44 +368,6 @@ struct ColorHSV_t {
         Delay2 = (V == Target.V)? 0 : ClrCalcDelay(V, SmoothValue);
         return (Delay2 > Delay)? Delay2 : Delay;
     }
-
-    uint32_t AdjustAndGetDelay(ColorHSV_t &Target, uint32_t SmoothValue) {
-        uint32_t Delay, Delay2;
-        if(V == 0 or Target.V == 0) { // One is black
-            if(V == 0) {
-                H = Target.H;
-                S = Target.S;
-            }
-            if(V == Target.V) return 0;
-            Delay = ClrCalcDelay(V, SmoothValue);
-            if     (V < Target.V) V++;
-            else if(V > Target.V) V--;
-            return Delay;
-        }
-        else {
-            if(H == Target.H) Delay = 0;
-            else {
-                Delay = ClrCalcDelay(H, SmoothValue);
-                if     (H < Target.H) H++;
-                else if(H > Target.H) H--;
-            }
-            if(S == Target.S) Delay2 = 0;
-            else {
-                Delay2 = ClrCalcDelay(S, SmoothValue);
-                if     (S < Target.S) S++;
-                else if(S > Target.S) S--;
-            }
-            if(Delay2 > Delay) Delay = Delay2;
-            if(V == Target.V) Delay2 = 0;
-            else {
-                Delay2 = ClrCalcDelay(V, SmoothValue);
-                if     (V < Target.V) V++;
-                else if(V > Target.V) V--;
-            }
-            return (Delay2 > Delay)? Delay2 : Delay;
-        }
-    }
-
 
     void ToRGB(uint8_t *PR, uint8_t *PG, uint8_t *PB) const {
         // Calc chroma: 0...255
@@ -477,5 +477,3 @@ struct ColorHSV_t {
 #define clRGBWCyan      ((Color_t){0, 255, 255,   0})
 #define clRGBWWhite     ((Color_t){0,   0,   0, 255})
 #endif
-
-#endif //COLOR_H__

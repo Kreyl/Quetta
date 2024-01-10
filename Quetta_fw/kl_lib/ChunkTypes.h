@@ -9,8 +9,8 @@
 #define CHUNKTYPES_H__
 
 #include "color.h"
-//#include "ch.h"
-//#include "MsgQ.h"
+#include "ch.h"
+#include "MsgQ.h"
 
 enum ChunkSort_t {csSetup, csWait, csGoto, csEnd, csRepeat};
 
@@ -148,4 +148,4 @@ public:
 };
 #endif
 
-#endif //CHUNKTYPES_H__
+#endif // CHUNKTYPES_H__

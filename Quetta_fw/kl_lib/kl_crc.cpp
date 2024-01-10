@@ -7,9 +7,11 @@
 
 #include "kl_crc.h"
 #include "shell.h"
+#include "board.h"
 
 namespace Crc {
 
+#if CRC_SW_EN
 static const uint16_t CRCTable[256] = {
         0x0000,0x1021,0x2042,0x3063,0x4084,0x50A5,0x60C6,0x70E7,0x8108,0x9129,0xA14A,0xB16B,0xC18C,0xD1AD,0xE1CE,0xF1EF,
         0x1231,0x0210,0x3273,0x2252,0x52B5,0x4294,0x72F7,0x62D6,0x9339,0x8318,0xB37B,0xA35A,0xD3BD,0xC39C,0xF3FF,0xE3DE,
@@ -29,65 +31,13 @@ static const uint16_t CRCTable[256] = {
         0xEF1F,0xFF3E,0xCF5D,0xDF7C,0xAF9B,0xBFBA,0x8FD9,0x9FF8,0x6E17,0x7E36,0x4E55,0x5E74,0x2E93,0x3EB2,0x0ED1,0x1EF0,
 };
 
-uint16_t CalculateCRC16(uint8_t *Buf, uint32_t Len) {
-    uint16_t crc = CRC_INITVALUE;
+uint16_t CalculateCRC16(uint8_t *Buf, uint32_t Len, const uint32_t Init) {
+    uint16_t crc = Init;
     for(uint32_t i=0; i<Len; ++i) {
         crc = (crc << 8) ^ CRCTable[(crc >> 8) ^ (0xFF & Buf[i])];
     }
     return crc;
 }
-
-uint16_t CalculateCRC16HW(uint8_t *Buf, uint32_t Len) {
-    StartHW();
-    // Calculate
-    while(Len--) *(volatile uint8_t*)&CRC->DR = *Buf++;
-    return CRC->DR;
-}
-
-void StartHW() {
-    // Init HW
-#if defined STM32L4XX
-    rccEnableCRC(FALSE);
-#else
-    RCC->AHBENR |= RCC_AHBENR_CRCEN;
-#endif
-    CRC->CR = (0b01 << 3); // poly sz = 16
-    CRC->INIT = CRC_INITVALUE;
-    CRC->POL = CRC_POLY;
-}
-
-void AppendHW(uint8_t b) {
-    *(volatile uint8_t*)&CRC->DR = b;
-}
-
-uint16_t Get() {
-    return CRC->DR;
-}
-
-#if defined STM32L4XX
-const stm32_dma_stream_t *PDma;
-#define CRC_DMA_MODE (STM32_DMA_CR_CHSEL(1) | DMA_PRIORITY_HIGH | \
-        STM32_DMA_CR_MSIZE_BYTE | STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_PINC |\
-        STM32_DMA_CR_DIR_M2M | STM32_DMA_CR_EN)
-
-void InitHWDMA() {
-    rccEnableCRC(FALSE);
-    CRC->CR = (0b01 << 3); // poly sz = 16
-    CRC->INIT = CRC_INITVALUE;
-    CRC->POL = 4129;
-    PDma = dmaStreamAlloc(STM32_DMA_STREAM_ID(1, 1), IRQ_PRIO_LOW, nullptr, nullptr);
-}
-
-uint16_t CalculateCRC16HWDMA(uint8_t *Buf, uint32_t Len) {
-    CRC->CR |= CRC_CR_RESET;
-    dmaStreamSetPeripheral(PDma, Buf);
-    dmaStreamSetMemory0(PDma, &CRC->DR);
-    dmaStreamSetTransactionSize(PDma, Len);
-    dmaStreamSetMode(PDma, CRC_DMA_MODE);
-    dmaWaitCompletion(PDma);
-    return CRC->DR;
-}
-#endif
 
 void CCITT16_PrintTable() {
     uint16_t poly = 4129;
@@ -113,5 +63,76 @@ void CCITT16_PrintTable() {
         }
     }
 }
+#endif
+
+
+uint16_t CalculateCRC16HW(uint8_t *Buf, uint32_t Len, const uint32_t Init) {
+    // Init HW
+#if defined STM32L4XX
+    rccEnableCRC(FALSE);
+#else
+    RCC->AHBENR |= RCC_AHBENR_CRCEN;
+#endif
+    CRC->CR = (0b01 << 3); // poly sz = 16
+    CRC->INIT = Init;
+    CRC->POL = CRC_POLY;
+    // Calculate
+    while(Len--) *(volatile uint8_t*)&CRC->DR = *Buf++;
+    return CRC->DR;
+}
+
+void StartHW() {
+    // Init HW
+#if defined STM32L4XX
+    rccEnableCRC(FALSE);
+#else
+    RCC->AHBENR |= RCC_AHBENR_CRCEN;
+#endif
+    CRC->CR |= CRC_CR_RESET;
+    CRC->CR = (0b01 << 3); // poly sz = 16
+    CRC->INIT = CRC_INITVALUE;
+    CRC->POL = CRC_POLY;
+}
+
+void AppendHW(uint8_t b) {
+    *(volatile uint8_t*)&CRC->DR = b;
+}
+
+uint16_t Get() {
+    return CRC->DR;
+}
+
+void Disable() {
+    rccDisableCRC();
+}
+
+#if defined STM32L4XX && defined CRC_DMA
+const stm32_dma_stream_t *PDma = nullptr;
+#define CRC_DMA_MODE (STM32_DMA_CR_CHSEL(0) | DMA_PRIORITY_HIGH | \
+        STM32_DMA_CR_MSIZE_BYTE | STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_PINC |\
+        STM32_DMA_CR_DIR_M2M | STM32_DMA_CR_EN)
+
+void StartHWDMA() {
+    if(PDma == nullptr) { // Not initialized
+        rccEnableCRC(FALSE);
+        PDma = dmaStreamAlloc(CRC_DMA, IRQ_PRIO_LOW, nullptr, nullptr);
+    }
+    StartHW();
+}
+
+void AppendHWDMABuf(uint8_t *Buf, uint32_t Len) {
+    dmaStreamSetPeripheral(PDma, Buf);
+    dmaStreamSetMemory0(PDma, &CRC->DR);
+    dmaStreamSetTransactionSize(PDma, Len);
+    dmaStreamSetMode(PDma, CRC_DMA_MODE);
+    dmaWaitCompletion(PDma);
+}
+
+uint16_t CalculateCRC16HWDMA(uint8_t *Buf, uint32_t Len) {
+    StartHWDMA();
+    AppendHWDMABuf(Buf, Len);
+    return CRC->DR;
+}
+#endif
 
 } // namespace

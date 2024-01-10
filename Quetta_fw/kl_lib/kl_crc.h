@@ -5,10 +5,14 @@
  *      Author: layst
  */
 
-#ifndef KL_CRC_H__
-#define KL_CRC_H__
+#ifndef KL_CRC_H_
+#define KL_CRC_H_
 
 #include <inttypes.h>
+#include "board.h"
+
+// Enable/disable functionality
+#define CRC_SW_EN       FALSE // if disabled, only hw will be used
 
 #define CRC_CCITT16
 
@@ -17,18 +21,26 @@
 
 namespace Crc {
 
-uint16_t CalculateCRC16(uint8_t *Buf, uint32_t Len);
-uint16_t CalculateCRC16HW(uint8_t *Buf, uint32_t Len);
+#if CRC_SW_EN
+uint16_t CalculateCRC16(uint8_t *Buf, uint32_t Len, const uint32_t Init = CRC_INITVALUE);
+void CCITT16_PrintTable();
+#endif
+
+uint16_t CalculateCRC16HW(uint8_t *Buf, uint32_t Len, const uint32_t Init = CRC_INITVALUE);
 
 void StartHW();
 void AppendHW(uint8_t b);
+void AppendHWBuf(uint8_t *Buf, uint32_t Len);
 uint16_t Get();
 
-void InitHWDMA();
-uint16_t CalculateCRC16HWDMA(uint8_t *Buf, uint32_t Len);
+void Disable();
 
-void CCITT16_PrintTable();
+#ifdef CRC_DMA
+uint16_t CalculateCRC16HWDMA(uint8_t *Buf, uint32_t Len);
+void StartHWDMA();
+void AppendHWDMABuf(uint8_t *Buf, uint32_t Len);
+#endif
 
 }
 
-#endif //KL_CRC_H__
+#endif // KL_CRC_H_
