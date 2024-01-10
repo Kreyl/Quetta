@@ -5,23 +5,27 @@
  *      Author: Kreyl
  */
 
-#ifndef EVTMSGIDS_H__
-#define EVTMSGIDS_H__
+#pragma once
 
 enum EvtMsgId_t {
     evtIdNone = 0, // Always
 
-    evtIdShellCmdRcvd, // UART
+    // Pretending to eternity
+    evtIdShellCmdRcvd,
     evtIdEverySecond,
+
+    evtIdAudioPlayStop,
 
     // Usb
     evtIdUsbConnect,
     evtIdUsbDisconnect,
     evtIdUsbReady,
-    evtIdUsbCmdRcvd,
+    evtIdUsbNewCmd,
     evtIdUsbInDone,
     evtIdUsbOutDone,
 
+    // Misc periph
+    evtIdButtons,
+    evtIdAcc,
+    evtIdDoFade,
 };
-
-#endif //EVTMSGIDS_H__

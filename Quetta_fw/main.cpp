@@ -7,6 +7,10 @@
 #include "Sequences.h"
 #include "kl_sd.h"
 #include "kl_fs_utils.h"
+#include "max98357.h"
+#include "AuPlayer.h"
+#include "usb_msd.h"
+#include "SimpleSensors.h"
 
 #if 1 // ======================== Variables & prototypes =======================
 // Forever
@@ -85,9 +89,9 @@ int main(void) {
     Lumos.StartOrRestart(lsqStart);
 
     PinAuPwrEn.InitAndSetHi();
+    Codec.Init();
+    AuPlayer.Init();
 
-//    Codec.Init();
-//    AuPlayer.Init();
     SD.Init();
     if(SD.IsReady) {
 //        FwUpdater::CheckAndTryToUpdate();
@@ -101,7 +105,7 @@ int main(void) {
 //        Printf("Volume: %u; AutoOffTime: %u\r", Volume, AutoOffTimeH);
 //        AuPlayer.Volume = Volume;
 //        ChargeUsbLed.IndicateOk();
-//        UsbMsd.Init();
+        UsbMsd.Init();
 //        SoundControl.PlayWakeupIntro();
         chThdSleepMilliseconds(99); // Allow it to start
     } // if SD is ready
@@ -127,11 +131,35 @@ void ITask() {
                 Lumos.StartOrRestart(lsqCmd);
                 break;
 
-            case evtIdUsbReady:
-                Lumos.StartOrRestart(lsqUsbReady);
+            case evtIdAudioPlayStop:
+                Printf("Snd Done\r");
+//                SoundControl.OnSndEnd();
+//                if(MustSleep) EnterSleep();
                 break;
 
-            default: break;
+//            case evtIdDoFade: SoundControl.OnTmrDoFade(); break;
+
+            case evtIdEverySecond:
+//                Iwdg::Reload();
+//                ChargeUsbLed.OnSecond(Msg.Values16[0], Msg.Values16[1]); // ADC values here
+                break;
+
+#if 1 // ======= USB =======
+            case evtIdUsbConnect:
+                AuPlayer.Stop();
+                Printf("USB connect\r");
+                UsbMsd.Connect();
+                break;
+            case evtIdUsbDisconnect:
+                Printf("USB disconnect\r");
+                UsbMsd.Disconnect();
+//                FwUpdater::CheckAndTryToUpdate();
+                break;
+            case evtIdUsbReady:
+                Lumos.StartOrRestart(lsqUsbReady);
+                Printf("USB ready\r");
+                break;
+#endif
         } // switch
     } // while true
 }
@@ -144,6 +172,21 @@ void OnCmd(Shell_t *PShell) {
     // Handle command
     if(PCmd->NameIs("Ping")) PShell->Ok();
     else if(PCmd->NameIs("Version")) PShell->Print("Version: %S %S\r\n", APP_NAME, AppVersion);
+
+    else if(PCmd->NameIs("play")) {
+        AuPlayer.Play(PCmd->GetNextString(), spmSingle);
+    }
+
+    else if(PCmd->NameIs("Stop")) {
+        AuPlayer.Stop();
+    }
+
+    else if(PCmd->NameIs("Vol")) {
+        uint32_t V;
+        if(PCmd->GetNext<uint32_t>(&V) != retvOk) return;
+        AuPlayer.SetVolume(V);
+        PShell->Ok();
+    }
 
     else PShell->CmdUnknown();
 }

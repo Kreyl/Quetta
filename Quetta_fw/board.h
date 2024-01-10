@@ -23,6 +23,7 @@
 #define I2C3_ENABLED            FALSE
 
 #define ADC_REQUIRED            FALSE
+#define SIMPLESENSORS_ENABLED   TRUE
 #define STM32_DMA_REQUIRED      TRUE    // Leave this macro name for OS
 
 #if 1 // ========================= Timers ======================================
