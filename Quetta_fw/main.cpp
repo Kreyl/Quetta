@@ -27,7 +27,7 @@ PinOutput_t PinAuPwrEn(AU_PWREN);
 #if 1 // ================== Charge, Usb, Battery, Led ==========================
 #define BATTERY_LOW_mv  3500
 #define BATTERY_DEAD_mv 3200
-void OnAdcDoneI();
+//void OnAdcDoneI();
 
 //const AdcSetup_t AdcSetup = {
 //        .VRefBufVoltage = vrefBufDisabled,
@@ -44,7 +44,7 @@ class ChargeUsbLed_t {
 private:
     LedSmooth_t Led{LED_PIN};
     bool PinUsbIsHi = false, PinIsChargingWasHi = true;
-    uint32_t AutoOffTimeoutSStart = (48UL * 3600UL), AutoOffTimeLeft = AutoOffTimeoutSStart;
+    TmrKL_t ITmr{TIME_MS2I(999), evtIdEverySecond, tktPeriodic};
 public:
     void Init() {
         Led.Init();
@@ -56,6 +56,7 @@ public:
         // Inner ADC
 //        InnAdc.Init(AdcSetup);
 //        InnAdc.StartPeriodicMeasurement(1);
+        ITmr.StartOrRestart();
     }
 
 //    void SetAutoOffTime(uint32_t AutoOffTimeH) {
@@ -63,7 +64,7 @@ public:
 //        AutoOffTimeLeft = AutoOffTimeoutSStart;
 //    }
 
-    void OnSecond(uint32_t VBatRaw, uint32_t VRefRaw) {
+    void OnSecond() {
         // Check if time to sleep
         /*
         if(AutoOffTimeLeft == 0) {
@@ -226,7 +227,7 @@ void ITask() {
 
             case evtIdEverySecond:
 //                Iwdg::Reload();
-//                ChargeUsbLed.OnSecond(Msg.Values16[0], Msg.Values16[1]); // ADC values here
+                ChargeUsbLed.OnSecond();
                 break;
 
 #if 1 // ======= USB =======
