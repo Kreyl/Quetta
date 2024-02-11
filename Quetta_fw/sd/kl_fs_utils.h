@@ -19,16 +19,15 @@
 extern FILINFO FileInfo;
 extern DIR Dir;
 extern FIL CommonFile;
+//extern
 
 uint8_t TryOpenFileRead(const char *Filename, FIL *PFile);
 uint8_t TryOpenFileRewrite(const char *Filename, FIL *PFile);
-uint8_t TryOpenFileReadWrite(const char *Filename, FIL *PFile); // Open existing
 void CloseFile(FIL *PFile);
 uint8_t CheckFileNotEmpty(FIL *PFile);
 uint8_t TryRead(FIL *PFile, void *Ptr, uint32_t Sz);
-static inline bool FileIsOpen(FIL *PFile) {
-    return (PFile->obj.fs != 0);
-}
+static inline bool FileIsOpen(FIL *PFile) { return (PFile->obj.fs != 0); }
+uint8_t SeekFile(FIL *PFile, uint32_t pos);
 
 template <typename T>
 uint8_t TryRead(FIL *PFile, T *Ptr) {
@@ -38,17 +37,78 @@ uint8_t TryRead(FIL *PFile, T *Ptr) {
 }
 
 uint8_t ReadLine(FIL *PFile, char* S, uint32_t MaxLen);
+uint8_t ReadLine(FIL *PFile, char** S);
 
 bool DirExists(const char* DirName);
 bool DirExistsAndContains(const char* DirName, const char* Extension);
-uint8_t CountFilesInDir(const char* DirName, const char* Extension, int32_t *PCnt);
+uint8_t CountFilesInDir(const char* DirName, const char* Extension, uint32_t *PCnt);
 uint8_t CountDirsStartingWith(const char* Path, const char* DirNameStart, uint32_t *PCnt);
+
+#if 1 // ======================== Get Random from root =========================
+class FileList_t {
+private:
+    int32_t LastN = -1; // At start, no file played yet
+    const char* FNameExt;
+public:
+    uint32_t FileCnt = 0;
+    char FileName[MAX_NAME_LEN];
+
+    FileList_t(const char* AFnameExt) : FNameExt(AFnameExt) {}
+    void Recount() {
+        LastN = -1;
+        FileCnt = 0;
+        CountFilesInDir("", FNameExt, &FileCnt);
+    }
+
+    uint8_t GetRandomFName() {
+        if(FileCnt == 0) return retvFail; // Get out if nothing to return
+        // Select number of file
+        uint32_t N = 0;
+        if(FileCnt > 1) { // Get random number if count > 1
+            do {
+                N = Random::Generate(0, FileCnt-1); // [0; Cnt-1]
+            } while(N == LastN); // skip same as previous
+        }
+        LastN = N;
+        // Iterate files in dir until success
+        uint32_t Cnt = 0;
+        uint8_t Rslt = f_opendir(&Dir, "");
+        if(Rslt != FR_OK) return retvFail;
+        while(true) {
+            Rslt = f_readdir(&Dir, &FileInfo);
+            if(Rslt != FR_OK) return retvFail;
+            if((FileInfo.fname[0] == 0)
+#if _USE_LFN
+                and (FileInfo.altname[0] == 0)
+#endif
+            ) return retvFail;  // somehow no files left
+            else { // Filename ok, check if not dir
+                if(!(FileInfo.fattrib & AM_DIR)) {
+                    // Check extension
+#if _USE_LFN
+                    char *IFName = (FileInfo.fname[0] == 0)? FileInfo.altname : FileInfo.fname;
+#else
+                    char *IFName = FileInfo.fname;
+#endif
+                    uint32_t Len = strlen(IFName);
+                    // Check len; then check extension; then check number
+                    if(Len > 4 and strcasecmp(&IFName[Len-3], FNameExt) == 0 and N == Cnt) {
+                        strcpy(FileName, IFName);
+                        return retvOk;
+                    }
+                    else Cnt++;
+                } // if not dir
+            } // Filename ok
+        } // while true
+    }
+};
+#endif
 
 #if 1 // ========================= GetRandom from dir ==========================
 struct DirRandData_t {
     char Name[MAX_NAME_LEN];
-    int32_t LastN;
-    int32_t FileCnt = 0;
+    uint32_t LastN;
+    uint32_t FileCnt = 0;
 };
 
 #define DIR_CNT   9
@@ -166,8 +226,8 @@ namespace ini { // =================== ini file operations =====================
  * ...
  */
 
+#if 1 // ==== Open / close file every time ====
 uint8_t ReadString(const char *AFileName, const char *ASection, const char *AKey, char **PPOutput);
-
 uint8_t ReadStringTo(const char *AFileName, const char *ASection, const char *AKey, char *POutput, uint32_t MaxLen);
 
 template <typename T>
@@ -187,5 +247,65 @@ void WriteSection(FIL *PFile, const char *ASection);
 void WriteString(FIL *PFile, const char *AKey, char *AValue);
 void WriteInt32(FIL *PFile, const char *AKey, const int32_t AValue);
 void WriteNewline(FIL *PFile);
+#endif
+
+#if 1 // ==== Open file once ====
+uint8_t OpenFile(const char *AFileName, FIL *PFile);
+void CloseFile(FIL *PFile);
+uint8_t ReadString  (FIL *PFile, const char *ASection, const char *AKey, char **PPOutput);
+uint8_t ReadStringTo(FIL *PFile, const char *ASection, const char *AKey, char *POutput, uint32_t MaxLen);
+uint8_t ReadUint32(FIL *PFile, const char *ASection, const char *AKey, uint32_t *POutput);
+uint8_t ReadInt32(FIL *PFile, const char *ASection, const char *AKey, int32_t *POutput);
+#endif
+
+} // namespace
+
+namespace csv { // =================== csv file operations =====================
+/*
+ * csv file has the following structure:
+ *
+ * # this is comment
+ * 14, 0x38, "DirName1"
+ * Name = "Mr. First"
+ * ...
+ */
+
+uint8_t OpenFile(const char *AFileName);
+void CloseFile();
+void RewindFile();
+uint8_t ReadNextLine();
+uint8_t GetNextCellString(char* POutput);
+uint8_t GetNextToken(char** POutput);
+
+// Finds first cell with given name and puts pointer to next cell
+uint8_t FindFirstCell(const char* Name);
+
+template <typename T>
+static uint8_t GetNextCell(T *POutput) {
+    char *Token;
+    if(GetNextToken(&Token) == retvOk) {
+//        Printf("Token: %S\r", Token);
+        char *p;
+        *POutput = (T)strtoul(Token, &p, 0);
+        if(*p == '\0') return retvOk;
+        else return retvNotANumber;
+    }
+    else return retvEmpty;
+}
+
+uint8_t GetNextCell(float *POutput);
+
+template <typename T>
+static uint8_t TryLoadParam(char* Token, const char* Name, T *Ptr) {
+    if(strcasecmp(Token, Name) == 0) {
+        if(csv::GetNextCell<T>(Ptr) == retvOk) return retvOk;
+        else Printf("%S load fail\r", Name);
+    }
+    return retvFail;
+}
+
+uint8_t TryLoadParam(char* Token, const char* Name, float *Ptr);
+
+uint8_t TryLoadString(char* Token, const char* Name, char *Dst, uint32_t MaxLen);
 
 } // namespace

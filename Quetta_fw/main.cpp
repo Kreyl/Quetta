@@ -23,6 +23,8 @@ const char* AppVersion = XSTRINGIFY(BUILD_TIME);
 static const UartParams_t CmdUartParams(115200, CMD_UART_PARAMS);
 CmdUart_t Uart{CmdUartParams};
 PinOutput_t PinAuPwrEn(AU_PWREN);
+LedSmooth_t Led{LED_PIN};
+FileList_t FList{"wav"};
 #endif
 
 #if 1 // ================== Charge, Usb, Battery, Led ==========================
@@ -41,85 +43,6 @@ PinOutput_t PinAuPwrEn(AU_PWREN);
 //        }
 //};
 
-class ChargeUsbLed_t {
-private:
-    LedSmooth_t Led{LED_PIN};
-    bool PinUsbIsHi = false, PinIsChargingWasHi = true;
-    TmrKL_t ITmr{TIME_MS2I(999), evtIdEverySecond, tktPeriodic};
-public:
-    void Init() {
-        Led.Init();
-        PinSetupInput(IS_CHARGING_PIN, pudPullUp);
-        PinSetupInput(USB_DETECT_PIN, pudPullDown);
-        // Battery measurement
-//        PinSetupOut(BAT_MEAS_EN, omOpenDrain);
-//        PinSetLo(BAT_MEAS_EN); // Enable it forever, as 200k produces ignorable current
-        // Inner ADC
-//        InnAdc.Init(AdcSetup);
-//        InnAdc.StartPeriodicMeasurement(1);
-        ITmr.StartOrRestart();
-    }
-
-//    void SetAutoOffTime(uint32_t AutoOffTimeH) {
-//        AutoOffTimeoutSStart = AutoOffTimeH * 3600UL; // Hours to seconds
-//        AutoOffTimeLeft = AutoOffTimeoutSStart;
-//    }
-
-    void OnSecond() {
-        // Check if time to sleep
-        /*
-        if(AutoOffTimeLeft == 0) {
-            Printf("Auto Off\r");
-            EnterSleep();
-            return;
-        }
-        else AutoOffTimeLeft--;
-        */
-        // If USB disconnected, check battery and SD
-        if(PinIsLo(USB_DETECT_PIN)) {
-            if(PinUsbIsHi) { // Just disconnected
-                PinUsbIsHi = false;
-                EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUsbDisconnect));
-                Led.StartOrContinue(lsqOk);
-            }
-            // Check SD
-            if(!SD.IsReady) {
-                if(SD.Reconnect() == retvOk) Led.StartOrRestart(lsqOk);
-                else Led.StartOrContinue(lsqFail);
-            }
-            // Check battery
-            /*
-            uint32_t Battery_mV = 2 * InnAdc.Adc2mV(VBatRaw, VRefRaw); // *2 because of resistor divider
-//            Printf("%u\r", Battery_mV);
-            if(Battery_mV < BATTERY_DEAD_mv) {
-                Printf("Discharged: %u\r", Battery_mV);
-                EnterSleep();
-            }
-            */
-        }
-        // If USB connected, check charging status
-        else if(PinIsHi(USB_DETECT_PIN)) {
-            if(!PinUsbIsHi) { // Just connected
-                PinUsbIsHi = true;
-                EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUsbConnect));
-            }
-            // Check IsCharging
-            if(PinIsLo(IS_CHARGING_PIN)) {
-                PinIsChargingWasHi = false;
-                Led.StartOrContinue(lsqCharging);
-            }
-            else { // Is hi => no charging
-                if(!PinIsChargingWasHi) { // Just stopped
-                    Led.StartOrRestart(lsqOk);
-                    PinIsChargingWasHi = true;
-                }
-            }
-        } // if USB is hi
-    }
-
-    void IndicateOk()   { Led.StartOrRestart(lsqOk); }
-    void IndicateFail() { Led.StartOrRestart(lsqFail); }
-} ChargeUsbLed;
 #endif
 
 int main(void) {
@@ -177,8 +100,8 @@ int main(void) {
 
 //    FwUpdater::PrintCurrBank();
 #endif
+    Led.Init();
     PinAuPwrEn.InitAndSetLo();
-    ChargeUsbLed.Init();
     Codec.Init();
     AuPlayer.Init();
 
@@ -194,13 +117,17 @@ int main(void) {
 //        ChargeUsbLed.SetAutoOffTime(AutoOffTimeH);
         Printf("Volume: %u; AutoOffTime: %u\r", Volume, AutoOffTimeH);
         AuPlayer.Volume = Volume;
-//        ChargeUsbLed.IndicateOk();
+        // Count wav files
+        FList.Recount();
+        Printf("wav files found: %u\r", FList.FileCnt);
+        if(FList.FileCnt > 0) Led.StartOrRestart(lsqOk);
+        else Led.StartOrRestart(lsqFail);
 //        UsbMsd.Init();
 //        SoundControl.PlayWakeupIntro();
         chThdSleepMilliseconds(99); // Allow it to start
     } // if SD is ready
     else {
-        ChargeUsbLed.IndicateFail();
+        Led.StartOrRestart(lsqFail);
         chThdSleepMilliseconds(3600);
 //        EnterSleep();
     }
@@ -228,7 +155,6 @@ void ITask() {
 
             case evtIdEverySecond:
 //                Iwdg::Reload();
-                ChargeUsbLed.OnSecond();
                 break;
 
 #if 1 // ======= USB =======
@@ -251,7 +177,8 @@ void ITask() {
 }
 
 void ProcessUsbPin(PinSnsState_t *PState, uint32_t Len) {
-
+    if(PState[0] == pssRising)       EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUsbConnect));
+    else if(PState[0] == pssFalling) EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUsbDisconnect));
 }
 
 void ProcessSnsPin(PinSnsState_t *PState, uint32_t Len) {
@@ -269,6 +196,14 @@ void OnCmd(Shell_t *PShell) {
 
     else if(PCmd->NameIs("play")) {
         AuPlayer.Play(PCmd->GetNextString(), spmSingle);
+    }
+
+    else if(PCmd->NameIs("playrnd")) {
+        if(FList.GetRandomFName() == retvOk) {
+            AuPlayer.Play(FList.FileName, spmSingle);
+            PShell->Ok();
+        }
+        else PShell->Failure();
     }
 
     else if(PCmd->NameIs("pwrHi")) { PinSetHi(SD_PWR_PIN); PShell->Ok(); }
