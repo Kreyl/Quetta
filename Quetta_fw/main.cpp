@@ -10,6 +10,7 @@
 #include "max98357.h"
 #include "AuPlayer.h"
 #include "usb_msd.h"
+#include "SimpleSensors.h"
 
 #if 1 // ======================== Variables & prototypes =======================
 // Forever
@@ -176,7 +177,7 @@ int main(void) {
 
 //    FwUpdater::PrintCurrBank();
 #endif
-    PinAuPwrEn.InitAndSetHi();
+    PinAuPwrEn.InitAndSetLo();
     ChargeUsbLed.Init();
     Codec.Init();
     AuPlayer.Init();
@@ -194,7 +195,7 @@ int main(void) {
         Printf("Volume: %u; AutoOffTime: %u\r", Volume, AutoOffTimeH);
         AuPlayer.Volume = Volume;
 //        ChargeUsbLed.IndicateOk();
-        UsbMsd.Init();
+//        UsbMsd.Init();
 //        SoundControl.PlayWakeupIntro();
         chThdSleepMilliseconds(99); // Allow it to start
     } // if SD is ready
@@ -249,6 +250,14 @@ void ITask() {
     } // while true
 }
 
+void ProcessUsbPin(PinSnsState_t *PState, uint32_t Len) {
+
+}
+
+void ProcessSnsPin(PinSnsState_t *PState, uint32_t Len) {
+
+}
+
 
 #if 1 // ======================= Command processing ============================
 void OnCmd(Shell_t *PShell) {
@@ -261,6 +270,9 @@ void OnCmd(Shell_t *PShell) {
     else if(PCmd->NameIs("play")) {
         AuPlayer.Play(PCmd->GetNextString(), spmSingle);
     }
+
+    else if(PCmd->NameIs("pwrHi")) { PinSetHi(SD_PWR_PIN); PShell->Ok(); }
+    else if(PCmd->NameIs("pwrLo")) { PinSetLo(SD_PWR_PIN); PShell->Ok(); }
 
     else if(PCmd->NameIs("Stop")) {
         AuPlayer.Stop();

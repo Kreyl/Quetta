@@ -1078,6 +1078,11 @@ public:
         PinSetHi(PGpio, Pin);
         PinSetupOut(PGpio, Pin, OutputType);
     }
+    void InitAndSetLo() const {
+        PinClockEnable(PGpio);
+        PinSetLo(PGpio, Pin);
+        PinSetupOut(PGpio, Pin, OutputType);
+    }
     void Deinit() const { PinSetupAnalog(PGpio, Pin); }
     void SetHi() const { PinSetHi(PGpio, Pin); }
     void SetLo() const { PinSetLo(PGpio, Pin); }

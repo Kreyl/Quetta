@@ -25,7 +25,6 @@ enum EvtMsgId_t {
     evtIdUsbOutDone,
 
     // Misc periph
-    evtIdButtons,
     evtIdAcc,
     evtIdDoFade,
 };
