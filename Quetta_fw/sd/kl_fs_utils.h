@@ -107,7 +107,7 @@ public:
 #if 1 // ========================= GetRandom from dir ==========================
 struct DirRandData_t {
     char Name[MAX_NAME_LEN];
-    uint32_t LastN;
+    int32_t LastN = -1;
     uint32_t FileCnt = 0;
 };
 
@@ -118,6 +118,7 @@ private:
     DirRandData_t Dirs[DIR_CNT];
     int32_t DirCnt = 0;
     int32_t CurrIndx = 0;
+    const char* FNameExt;
     uint8_t FindDirInList(const char* DirName) {
         CurrIndx = 0;
         for(int32_t i=0; i<DirCnt; i++) {
@@ -134,23 +135,25 @@ private:
         DirCnt++;
         strcpy(Dirs[CurrIndx].Name, DirName);
     }
-    void CountFiles(const char* Ext) {
-        CountFilesInDir(Dirs[CurrIndx].Name, Ext, &Dirs[CurrIndx].FileCnt);
-    }
+    void CountFiles(const char* Ext) { CountFilesInDir(Dirs[CurrIndx].Name, Ext, &Dirs[CurrIndx].FileCnt);  }
 public:
+    char FileName[MAX_NAME_LEN];
+
+    DirList_t(const char* AFnameExt) : FNameExt(AFnameExt) {}
+
     void Reset() {
         DirCnt = 0;
         CurrIndx = 0;
         Dirs[0].FileCnt = 0;
-        Dirs[0].LastN = 0;
+        Dirs[0].LastN = -1;
     }
 
-    uint8_t GetRandomFnameFromDir(const char* DirName, char* AFname) {
+    uint8_t GetRandomFnameFromDir(const char* DirName) {
         // Check if dir in list
         if(FindDirInList(DirName) != retvOk) { // No such dir
     //        Printf("No Dir %S in list\r" , DirName);
             AddDir(DirName);
-            CountFiles("wav");  // Count files in dir
+            CountFiles(FNameExt);  // Count files in dir
         }
         uint32_t Cnt = Dirs[CurrIndx].FileCnt;
         if(Cnt == 0) return retvFail; // Get out if nothing to play
@@ -192,10 +195,10 @@ public:
                                 // Check if root dir. Empty string allowed, too
                                 int Len = strlen(DirName);
                                 if((Len > 1) or (Len == 1 and *DirName != '/' and *DirName != '\\')) {
-                                    strcpy(AFname, DirName);
-                                    AFname[Len] = '/';
+                                    strcpy(FileName, DirName);
+                                    FileName[Len] = '/';
                                 }
-                                strcpy(&AFname[Len+1], FName);
+                                strcpy(&FileName[Len+1], FName);
                                 return retvOk;
                             }
                             else Cnt++;

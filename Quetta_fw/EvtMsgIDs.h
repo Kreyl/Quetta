@@ -26,5 +26,6 @@ enum EvtMsgId_t {
 
     // Misc periph
     evtIdAcc,
-    evtIdDoFade,
+    evtIdSensor,
+    evtIdSndTmr,
 };

@@ -330,30 +330,14 @@ public:
 
 #if 1 // ========================== Random =====================================
 namespace Random {
-static uint32_t next = 1;
 
-static int32_t do_rand(uint32_t *ctx) {
-#if 0
-    if(*ctx == 0) *ctx = 123459876;
-    int32_t hi = *ctx / 127773;
-    int32_t lo = *ctx % 127773;
-    int32_t x = 16807 * lo - 2836 * hi;
-    if(x < 0) x += 0x7FFFFFFF;
-    return ((*ctx = x) % ((uint32_t)0x7fffffff + 1));
-#else
-    return ((*ctx = *ctx * 1103515245 + 12345) % ((uint32_t)0x7fffffff + 1));
-#endif
-}
-
-static int32_t rand() { return do_rand(&next); }
+int32_t rand();
 
 // Generate pseudo-random value
-static inline long int Generate(long int LowInclusive, long int HighInclusive) {
-    uint32_t last = rand();
-    return (last % (HighInclusive + 1 - LowInclusive)) + LowInclusive;
-}
+int32_t Generate(int32_t LowInclusive, int32_t HighInclusive);
+
 // Seed pseudo-random generator with new seed
-static inline void Seed(unsigned int Seed) { next = Seed; }
+void Seed(uint32_t Seed);
 
 // True random
 #if defined STM32L4XX

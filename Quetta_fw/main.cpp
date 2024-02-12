@@ -24,7 +24,10 @@ static const UartParams_t CmdUartParams(115200, CMD_UART_PARAMS);
 CmdUart_t Uart{CmdUartParams};
 PinOutput_t PinAuPwrEn(AU_PWREN);
 LedSmooth_t Led{LED_PIN};
-FileList_t FList{"wav"};
+
+DirList_t SndList{"wav"};
+#define SND_DIR     "Sounds"
+TmrKL_t TmrSound{TIME_MS2I(999), evtIdSndTmr, tktOneShot};
 #endif
 
 #if 1 // ================== Charge, Usb, Battery, Led ==========================
@@ -52,7 +55,7 @@ int main(void) {
 #if 1 // ==== Clk, Os, EvtQ, Uart ====
     Clk.SwitchToMSI();
     Clk.SetVoltageRange(mvrHiPerf);
-    Clk.SetupFlashLatency(40, mvrHiPerf);
+    Clk.SetupFlashLatency(24, mvrHiPerf);
     Clk.EnablePrefetch();
     // HSE or MSI
     if(Clk.EnableHSE() == retvOk) {
@@ -64,7 +67,7 @@ int main(void) {
         Clk.SetupM(1);
     }
     // SysClock 40MHz
-    Clk.SetupPll(20, 2, 4);
+    Clk.SetupPll(24, 4, 4);
     Clk.SetupBusDividers(ahbDiv1, apbDiv1, apbDiv1);
     if(Clk.EnablePll() == retvOk) {
         Clk.EnablePllROut();
@@ -100,40 +103,43 @@ int main(void) {
 
 //    FwUpdater::PrintCurrBank();
 #endif
+
     Led.Init();
     PinAuPwrEn.InitAndSetLo();
     Codec.Init();
     AuPlayer.Init();
+    Random::TrueInit();
+    Random::SeedWithTrue();
+    Random::TrueDeinit();
 
     SD.Init();
     if(SD.IsReady) {
 //        FwUpdater::CheckAndTryToUpdate();
-        uint32_t Volume, AutoOffTimeH;
+        uint32_t Volume, TimeoutBetween;
         if(ini::Read<uint32_t>("Settings.ini", "Sound", "Volume", &Volume) != retvOk) Volume = 100;
         if(Volume > VOLUME_MAX) Volume = VOLUME_MAX;
-//        if(ini::Read<uint32_t>("Settings.ini", "Common", "AutoOffTimeH", &AutoOffTimeH) != retvOk) AutoOffTimeH = 48;
-//        if(AutoOffTimeH == 0) AutoOffTimeH = 1;
-//        else if(AutoOffTimeH > 1000000) AutoOffTimeH = 1000000;
-//        ChargeUsbLed.SetAutoOffTime(AutoOffTimeH);
-        Printf("Volume: %u; AutoOffTime: %u\r", Volume, AutoOffTimeH);
+        if(ini::Read<uint32_t>("Settings.ini", "Sound", "TimeoutBetween", &TimeoutBetween) != retvOk) TimeoutBetween = 9000;
+        Printf("Volume: %u; TimeoutBetween: %u\r", Volume, TimeoutBetween);
         AuPlayer.Volume = Volume;
+        TmrSound.SetNewPeriod_ms(TimeoutBetween);
         // Count wav files
-        FList.Recount();
-        Printf("wav files found: %u\r", FList.FileCnt);
-        if(FList.FileCnt > 0) Led.StartOrRestart(lsqOk);
+        uint32_t Cnt;
+        CountFilesInDir(SND_DIR, "wav", &Cnt);
+        Printf("wav files found: %u\r", Cnt);
+        if(Cnt > 0) Led.StartOrRestart(lsqOk);
         else Led.StartOrRestart(lsqFail);
 //        UsbMsd.Init();
-//        SoundControl.PlayWakeupIntro();
         chThdSleepMilliseconds(99); // Allow it to start
     } // if SD is ready
     else {
         Led.StartOrRestart(lsqFail);
         chThdSleepMilliseconds(3600);
-//        EnterSleep();
     }
 
-    // Main cycle
-    ITask();
+    TmrSound.StartOrRestart(); // Initial timeout
+    SimpleSensors::Init();
+
+    ITask(); // Main cycle
 }
 
 __noreturn
@@ -147,11 +153,22 @@ void ITask() {
 
             case evtIdAudioPlayStop:
                 Printf("Snd Done\r");
-//                SoundControl.OnSndEnd();
-//                if(MustSleep) EnterSleep();
                 break;
 
-//            case evtIdDoFade: SoundControl.OnTmrDoFade(); break;
+            case evtIdSensor: // Play if not playing and if timer is not active
+                if(AuPlayer.IsPlayingNow()) Printf("Sns fired when playing\r");
+                else if(TmrSound.IsRunning()) Printf("Sns fired within timeout\r");
+                else {
+                    if(SndList.GetRandomFnameFromDir(SND_DIR) == retvOk) {
+                        AuPlayer.Play(SndList.FileName, spmSingle);
+                        TmrSound.StartOrRestart(); // Ignore sensor for some time
+                    }
+                }
+                break;
+
+            case evtIdSndTmr:
+                Printf("Timeout ended\r");
+                break;
 
             case evtIdEverySecond:
 //                Iwdg::Reload();
@@ -182,7 +199,7 @@ void ProcessUsbPin(PinSnsState_t *PState, uint32_t Len) {
 }
 
 void ProcessSnsPin(PinSnsState_t *PState, uint32_t Len) {
-
+    if(PState[0] == pssRising) EvtQMain.SendNowOrExit(EvtMsg_t(evtIdSensor));
 }
 
 
@@ -199,8 +216,8 @@ void OnCmd(Shell_t *PShell) {
     }
 
     else if(PCmd->NameIs("playrnd")) {
-        if(FList.GetRandomFName() == retvOk) {
-            AuPlayer.Play(FList.FileName, spmSingle);
+        if(SndList.GetRandomFnameFromDir(SND_DIR) == retvOk) {
+            AuPlayer.Play(SndList.FileName, spmSingle);
             PShell->Ok();
         }
         else PShell->Failure();
@@ -208,6 +225,11 @@ void OnCmd(Shell_t *PShell) {
 
     else if(PCmd->NameIs("pwrHi")) { PinSetHi(SD_PWR_PIN); PShell->Ok(); }
     else if(PCmd->NameIs("pwrLo")) { PinSetLo(SD_PWR_PIN); PShell->Ok(); }
+
+    else if(PCmd->NameIs("Sns")) {
+        EvtQMain.SendNowOrExit(EvtMsg_t(evtIdSensor));
+        PShell->Ok();
+    }
 
     else if(PCmd->NameIs("Stop")) {
         AuPlayer.Stop();

@@ -145,8 +145,23 @@ void MemCpy(void *Dst, void *Src, uint32_t Sz) {
 } // namespace
 #endif
 
-#if defined STM32L4XX
 namespace Random {
+static uint32_t next = 1;
+
+static int32_t do_rand(uint32_t *ctx) {
+    return ((*ctx = *ctx * 1103515245 + 12345) % ((uint32_t)0x7fffffff + 1));
+}
+
+int32_t rand() { return do_rand(&next); }
+
+int32_t Generate(int32_t LowInclusive, int32_t HighInclusive) {
+    uint32_t last = rand();
+    return (last % (HighInclusive + 1 - LowInclusive)) + LowInclusive;
+}
+
+void Seed(uint32_t Seed) { next = Seed; }
+
+#if defined STM32L4XX
 void TrueInit() {
     rccEnableAHB2(RCC_AHB2ENR_RNGEN, FALSE);
     RNG->CR = RNG_CR_RNGEN; // Enable random generator
@@ -171,9 +186,8 @@ void SeedWithTrue() {
     uint32_t dw = RNG->DR;
     Seed(dw);
 }
-
-} // namespace
 #endif
+} // namespace
 
 #if 1 // ============================= Timer ===================================
 void Timer_t::Init() const {
